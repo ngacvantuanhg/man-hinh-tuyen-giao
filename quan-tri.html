@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị – Màn hình theo dõi công tác Tuyên giáo</title>
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script src="chi-tieu.js"></script>
+<style>
+  :root {
+    --do: #C8102E; --do-dam: #A50F25; --navy: #0D1B2A; --vang: #F5A623;
+    --nen: #FBF8EF; --trang: #FFFFFF; --vien: #E3DED0; --chu-phu: #5E6B7C;
+    --xanh-ok: #1E7B45; --loi: #B3261E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif; background: var(--nen); color: var(--navy); font-size: 15px; line-height: 1.5; }
+  button, input, select, textarea { font: inherit; }
+  .an { display: none !important; }
+
+  header { background: var(--do-dam); color: #fff; border-bottom: 3px solid var(--vang); }
+  .dau { max-width: 1200px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 14px; }
+  .dau img { width: 46px; height: 46px; }
+  .dau .ten { flex: 1; }
+  .dau .ten b { display: block; font-size: 18px; }
+  .dau .ten span { font-size: 13px; opacity: .85; }
+  .dau .tk { font-size: 13px; text-align: right; }
+  .dau .tk button { margin-top: 4px; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.6); border-radius: 6px; padding: 3px 12px; cursor: pointer; }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 22px 24px 60px; }
+  .tabs { display: flex; gap: 6px; border-bottom: 2px solid var(--vien); margin-bottom: 22px; flex-wrap: wrap; }
+  .tabs button { background: none; border: 0; padding: 10px 18px; font-weight: 600; color: var(--chu-phu); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tabs button.on { color: var(--do); border-bottom-color: var(--do); }
+
+  .khoi { background: var(--trang); border: 1px solid var(--vien); border-radius: 12px; padding: 20px 22px; margin-bottom: 18px; }
+  .khoi h2 { font-size: 18px; margin-bottom: 4px; }
+  .khoi .mo { color: var(--chu-phu); font-size: 14px; margin-bottom: 14px; }
+  .nut { background: var(--do); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font-weight: 600; cursor: pointer; }
+  .nut:hover { background: var(--do-dam); }
+  .nut:disabled { opacity: .5; cursor: not-allowed; }
+  .nut.phu { background: #fff; color: var(--navy); border: 1px solid var(--vien); }
+  .nut.phu:hover { background: #F3EFE3; }
+  .nut.nho { padding: 5px 12px; font-size: 13px; }
+  .nut.xoa { background: #fff; color: var(--loi); border: 1px solid #E6B8B4; }
+  .nut:focus-visible, .tabs button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--vang); outline-offset: 2px; }
+
+  label.truong { display: block; font-weight: 600; font-size: 14px; margin-bottom: 12px; }
+  label.truong input, label.truong textarea { display: block; width: 100%; margin-top: 4px; padding: 9px 12px; border: 1px solid var(--vien); border-radius: 8px; background: #fff; font-weight: 400; }
+  .hang { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .luoi2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+
+  .vung-tha { border: 2px dashed #D6CDB4; border-radius: 12px; padding: 28px; text-align: center; background: #FFFDF6; cursor: pointer; }
+  .vung-tha.keo { border-color: var(--do); background: #FFF4F4; }
+  .vung-tha b { color: var(--do); }
+
+  .tom-tat { display: flex; gap: 14px; flex-wrap: wrap; margin: 6px 0 14px; }
+  .tom-tat div { background: #F7F3E7; border-radius: 10px; padding: 10px 16px; }
+  .tom-tat b { display: block; font-size: 20px; }
+  .tom-tat span { font-size: 13px; color: var(--chu-phu); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 7px 10px; border-bottom: 1px solid #EEE9DB; text-align: left; vertical-align: middle; }
+  th { background: var(--navy); color: #fff; font-weight: 600; position: sticky; top: 0; }
+  td.so { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  tr.nhom td { background: #F7F3E7; color: var(--do); font-weight: 700; }
+  tr.trong td { color: #A3A9B2; }
+  .bang-cuon { max-height: 460px; overflow: auto; border: 1px solid var(--vien); border-radius: 10px; }
+
+  .tb { padding: 10px 14px; border-radius: 8px; margin: 10px 0; font-size: 14px; }
+  .tb.loi { background: #FCEBEA; color: var(--loi); }
+  .tb.canh { background: #FFF6DC; color: #7A5200; }
+  .tb.ok { background: #E7F4EC; color: var(--xanh-ok); }
+
+  .the-nho { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--do); color: #fff; }
+
+  .luoi-anh { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .o-anh { background: #fff; border: 1px solid var(--vien); border-radius: 12px; overflow: hidden; }
+  .o-anh img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #EEE; }
+  .o-anh .nd { padding: 10px 12px 12px; }
+  .o-anh input { width: 100%; padding: 6px 8px; border: 1px solid var(--vien); border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+  .o-anh.an-mo { opacity: .55; }
+
+  .dong-tin { display: grid; grid-template-columns: 1fr 70px auto auto auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #EEE9DB; }
+  .dong-tin input[type=text] { padding: 7px 10px; border: 1px solid var(--vien); border-radius: 6px; width: 100%; }
+  .dong-tin input[type=number] { padding: 7px 6px; border: 1px solid var(--vien); border-radius: 6px; width: 100%; }
+
+  #toast { position: fixed; right: 24px; bottom: 24px; background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 14px; opacity: 0; transform: translateY(10px); transition: .25s; pointer-events: none; }
+  #toast.hien { opacity: 1; transform: none; }
+
+  .dn { max-width: 400px; margin: 60px auto; text-align: center; }
+  .dn img { width: 80px; }
+  .dn h1 { font-size: 20px; margin: 12px 0 18px; }
+  .dn input { width: 100%; padding: 11px 13px; border: 1px solid var(--vien); border-radius: 8px; margin-bottom: 10px; }
+  .dn .nut { width: 100%; padding: 11px; }
+  @media (max-width: 700px) { .luoi2 { grid-template-columns: 1fr; } .dong-tin { grid-template-columns: 1fr 60px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="dau">
+    <img src="logo.png" alt="Logo Tuyên giáo">
+    <div class="ten"><b>Trang quản trị</b><span>Màn hình theo dõi công tác Tuyên giáo – Tỉnh ủy Tuyên Quang</span></div>
+    <div class="tk an" id="tk"><span id="tkEmail"></span><br><button id="nutThoat">Đăng xuất</button></div>
+  </div>
+</header>
+
+<!-- ĐĂNG NHẬP -->
+<div class="khoi dn an" id="manDN">
+  <img src="logo.png" alt="">
+  <h1>Đăng nhập tài khoản quản trị</h1>
+  <form id="formDN">
+    <input type="email" id="dnEmail" placeholder="Email" autocomplete="username" required>
+    <input type="password" id="dnMatKhau" placeholder="Mật khẩu" autocomplete="current-password" required>
+    <button class="nut" type="submit">Đăng nhập</button>
+  </form>
+  <div class="tb loi an" id="dnLoi"></div>
+</div>
+
+<main class="an" id="manChinh">
+  <nav class="tabs" id="tabs">
+    <button data-tab="soLieu" class="on">Số liệu</button>
+    <button data-tab="ky">Các kỳ đã tải</button>
+    <button data-tab="anh">Ảnh trình chiếu</button>
+    <button data-tab="tin">Tin chạy chữ</button>
+  </nav>
+
+  <!-- SỐ LIỆU -->
+  <section data-trang="soLieu">
+    <div class="khoi">
+      <h2>Tải số liệu một kỳ báo cáo</h2>
+      <p class="mo">Dùng file theo biểu mẫu. <a href="BieuMau_SoLieu_TuyenGiao.xlsx" download>Tải biểu mẫu trống</a>. Tải lại cùng một kỳ sẽ thay toàn bộ số liệu cũ của kỳ đó.</p>
+      <div class="vung-tha" id="vungTha">
+        <b>Chọn file Excel</b> hoặc kéo thả file vào đây
+        <input type="file" id="fileExcel" accept=".xlsx,.xls" class="an">
+      </div>
+      <div id="ketQuaDoc"></div>
+    </div>
+    <div class="khoi an" id="khoiXemTruoc">
+      <h2 id="xtTieuDe"></h2>
+      <div class="tom-tat" id="xtTomTat"></div>
+      <div id="xtThongBao"></div>
+      <div class="bang-cuon"><table><thead><tr><th>Mã</th><th>Chỉ tiêu</th><th>Đơn vị</th><th style="text-align:right">Số liệu</th></tr></thead><tbody id="xtBang"></tbody></table></div>
+      <div class="hang" style="margin-top:14px">
+        <label class="hang" style="font-weight:600"><input type="checkbox" id="xtHien" checked> Hiện kỳ này lên màn hình ngay</label>
+        <span style="flex:1"></span>
+        <button class="nut phu" id="xtHuy">Hủy</button>
+        <button class="nut" id="xtLuu">Lưu kỳ báo cáo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CÁC KỲ -->
+  <section data-trang="ky" class="an">
+    <div class="khoi">
+      <h2>Các kỳ đã tải</h2>
+      <p class="mo">Màn hình TV hiện kỳ có nhãn “Đang hiện”. Màn hình tự cập nhật sau tối đa 30 phút.</p>
+      <table><thead><tr><th>Kỳ báo cáo</th><th>Số chỉ tiêu</th><th>Ngày tải</th><th></th></tr></thead><tbody id="bangKy"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ẢNH -->
+  <section data-trang="anh" class="an">
+    <div class="khoi">
+      <h2>Thêm ảnh trình chiếu</h2>
+      <p class="mo">Ảnh được tự thu nhỏ về chiều rộng tối đa 1920 px trước khi tải lên. Nên ghi rõ nguồn ảnh.</p>
+      <form id="formAnh">
+        <label class="truong">Ảnh <input type="file" id="anhFile" accept="image/*" required></label>
+        <div class="luoi2">
+          <label class="truong">Địa phương, địa danh <input type="text" id="anhDiaPhuong" required placeholder="Ví dụ: Khu di tích Tân Trào"></label>
+          <label class="truong">Nguồn ảnh <input type="text" id="anhNguon" placeholder="Ví dụ: Báo và PT-TH Tuyên Quang"></label>
+        </div>
+        <label class="truong">Nội dung chú thích <input type="text" id="anhNoiDung" placeholder="Ví dụ: Lễ hội Thành Tuyên năm 2026"></label>
+        <button class="nut" type="submit" id="nutTaiAnh">Tải ảnh lên</button>
+      </form>
+    </div>
+    <div class="khoi">
+      <h2>Ảnh đang có</h2>
+      <p class="mo">Ảnh chạy theo cột Thứ tự (số nhỏ chạy trước). Bỏ chọn “Hiện” để tạm ẩn ảnh.</p>
+      <div class="luoi-anh" id="dsAnh"></div>
+    </div>
+  </section>
+
+  <!-- TIN -->
+  <section data-trang="tin" class="an">
+    <div class="khoi">
+      <h2>Thêm tin chạy chữ</h2>
+      <form id="formTin" class="hang">
+        <input type="text" id="tinMoi" required placeholder="Nội dung tin nổi bật…" style="flex:1;min-width:240px;padding:9px 12px;border:1px solid var(--vien);border-radius:8px">
+        <button class="nut" type="submit">Thêm tin</button>
+      </form>
+    </div>
+    <div class="khoi">
+      <h2>Danh sách tin</h2>
+      <p class="mo">Sửa trực tiếp rồi bấm Lưu. Tin chạy theo Thứ tự (số nhỏ chạy trước).</p>
+      <div class="dong-tin" style="font-weight:600;color:var(--chu-phu);font-size:13px"><span>Nội dung</span><span>Thứ tự</span><span>Hiện</span><span></span><span></span></div>
+      <div id="dsTin"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const sb = supabase.createClient(CAU_HINH_SUPABASE.url, CAU_HINH_SUPABASE.anonKey, {
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: "mhdh-quantri" }
+});
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const BAN_DO_CT = Object.fromEntries(CHI_TIEU.map(c => [c.ma, c]));
+function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("hien"); clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove("hien"), 2600); }
+function baoLoi(err, viec) { console.error(err); alert(`${viec} không thành công.\n${err.message || err}`); }
+
+/* ===================== ĐĂNG NHẬP, PHÂN QUYỀN ===================== */
+async function kiemTra() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $("manDN").classList.remove("an"); $("manChinh").classList.add("an"); $("tk").classList.add("an"); return; }
+  const { data: q } = await sb.from("quyen").select("vai_tro").maybeSingle();
+  $("tkEmail").textContent = session.user.email; $("tk").classList.remove("an");
+  if (!q || q.vai_tro !== "quan_tri") {
+    $("manDN").classList.remove("an"); $("manChinh").classList.add("an");
+    $("dnLoi").textContent = "Tài khoản này không có quyền quản trị."; $("dnLoi").classList.remove("an");
+    return;
+  }
+  $("manDN").classList.add("an"); $("manChinh").classList.remove("an");
+  taiDsKy(); taiDsAnh(); taiDsTin();
+}
+$("formDN").addEventListener("submit", async e => {
+  e.preventDefault(); $("dnLoi").classList.add("an");
+  const { error } = await sb.auth.signInWithPassword({ email: $("dnEmail").value.trim(), password: $("dnMatKhau").value });
+  if (error) { $("dnLoi").textContent = "Email hoặc mật khẩu không đúng."; $("dnLoi").classList.remove("an"); return; }
+  kiemTra();
+});
+$("nutThoat").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+/* ===================== TAB ===================== */
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll("[data-trang]").forEach(s => s.classList.toggle("an", s.dataset.trang !== b.dataset.tab));
+});
+
+/* ===================== ĐỌC FILE EXCEL ===================== */
+const LOAI = { "tháng": "thang", "quý": "quy", "6 tháng": "6t", "9 tháng": "9t", "năm": "nam" };
+const LA_MA = ["", "I", "II", "III", "IV"];
+const chuanHoa = s => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+function docSo(x) {
+  if (x === null || x === undefined || x === "") return { trong: true };
+  if (typeof x === "number") return { so: x };
+  let s = String(x).trim().replace(/\s/g, "");
+  if (s === "") return { trong: true };
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+  else s = s.replace(",", ".");
+  const n = Number(s);
+  return isNaN(n) || n < 0 ? { loi: true } : { so: n };
+}
+
+function docFile(buf) {
+  const wb = XLSX.read(buf, { type: "array" });
+  const ws = wb.Sheets["Nhap_so_lieu"] || wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const giaTriBen = (r, c) => { for (let j = c + 1; j < r.length; j++) if (r[j] !== null && r[j] !== "") return r[j]; return null; };
+  let loai = null, so = null, nam = null, hangTieuDe = -1, cotMa = -1, cotSo = -1;
+  rows.forEach((r, i) => r.forEach((c, j) => {
+    const t = chuanHoa(c);
+    if (t.startsWith("loại kỳ")) loai = giaTriBen(r, j);
+    else if (t.startsWith("tháng hoặc quý")) so = giaTriBen(r, j);
+    else if (t === "năm") nam = giaTriBen(r, j);
+    else if (t === "mã chỉ tiêu" && hangTieuDe < 0) { hangTieuDe = i; cotMa = j; }
+    else if (t === "số liệu" && i === hangTieuDe) cotSo = j;
+  }));
+  const loi = [], canh = [];
+  if (hangTieuDe < 0 || cotSo < 0) { loi.push("Không tìm thấy bảng chỉ tiêu (cột “Mã chỉ tiêu” và “Số liệu”). Hãy dùng đúng biểu mẫu."); return { loi, canh }; }
+
+  const maLoai = LOAI[chuanHoa(loai)];
+  const n = Number(nam), s = Number(so);
+  if (!maLoai) loi.push("Chưa chọn Loại kỳ báo cáo hợp lệ (Tháng, Quý, 6 tháng, 9 tháng, Năm).");
+  if (!(n >= 2020 && n <= 2100)) loi.push("Năm chưa hợp lệ.");
+  if (maLoai === "thang" && !(s >= 1 && s <= 12)) loi.push("Kỳ Tháng cần điền số tháng từ 1 đến 12.");
+  if (maLoai === "quy" && !(s >= 1 && s <= 4)) loi.push("Kỳ Quý cần điền số quý từ 1 đến 4.");
+
+  let ky = null;
+  if (!loi.length) {
+    const p = x => String(x).padStart(2, "0");
+    ky = {
+      thang: { ma: `${n}-T${p(s)}`, ten: `Tháng ${s} năm ${n}`, so: s, thu_tu: s },
+      quy:   { ma: `${n}-Q${s}`,   ten: `Quý ${LA_MA[s]} năm ${n}`, so: s, thu_tu: s * 3 },
+      "6t":  { ma: `${n}-6T`,      ten: `6 tháng đầu năm ${n}`, so: null, thu_tu: 6 },
+      "9t":  { ma: `${n}-9T`,      ten: `9 tháng năm ${n}`, so: null, thu_tu: 9 },
+      nam:   { ma: `${n}-N`,       ten: `Năm ${n}`, so: null, thu_tu: 12 }
+    }[maLoai];
+    ky.loai = maLoai; ky.nam = n;
+  }
+
+  const giaTri = {}, loiSo = [], maLa = [];
+  for (let i = hangTieuDe + 1; i < rows.length; i++) {
+    const ma = rows[i][cotMa] ? String(rows[i][cotMa]).trim() : "";
+    if (!ma) continue;
+    if (!BAN_DO_CT[ma]) { maLa.push(ma); continue; }
+    const d = docSo(rows[i][cotSo]);
+    if (d.loi) loiSo.push(`${BAN_DO_CT[ma].ten}: “${rows[i][cotSo]}”`);
+    else if (!d.trong) giaTri[ma] = d.so;
+  }
+  if (loiSo.length) loi.push("Có ô không phải số hợp lệ: " + loiSo.join("; "));
+  if (maLa.length) canh.push("Bỏ qua các mã không có trong bộ chỉ tiêu: " + maLa.join(", "));
+  if (!Object.keys(giaTri).length && !loiSo.length) loi.push("File chưa có số liệu nào.");
+  return { ky, giaTri, loi, canh };
+}
+
+let docDuoc = null;
+async function xuLyFile(file) {
+  $("ketQuaDoc").innerHTML = ""; $("khoiXemTruoc").classList.add("an");
+  try {
+    docDuoc = docFile(await file.arrayBuffer());
+  } catch (err) {
+    $("ketQuaDoc").innerHTML = `<div class="tb loi">Không đọc được file: ${esc(err.message)}</div>`; return;
+  }
+  const { ky, giaTri, loi, canh } = docDuoc;
+  if (!ky && loi.length && !giaTri) { $("ketQuaDoc").innerHTML = loi.map(t => `<div class="tb loi">${esc(t)}</div>`).join(""); return; }
+
+  let daCo = null;
+  if (ky) { const r = await sb.from("ky_bao_cao").select("id").eq("ma", ky.ma).maybeSingle(); daCo = r.data; }
+
+  $("xtTieuDe").textContent = ky ? `Xem trước: ${ky.ten}` : "Xem trước";
+  const soCo = Object.keys(giaTri || {}).length;
+  $("xtTomTat").innerHTML = `<div><b>${soCo}</b><span>chỉ tiêu có số</span></div><div><b>${CHI_TIEU.length - soCo}</b><span>chỉ tiêu để trống</span></div>`;
+  $("xtThongBao").innerHTML =
+    loi.map(t => `<div class="tb loi">${esc(t)}</div>`).join("") +
+    canh.map(t => `<div class="tb canh">${esc(t)}</div>`).join("") +
+    (daCo ? `<div class="tb canh">Kỳ này đã có trên hệ thống. Bấm Lưu sẽ thay toàn bộ số liệu cũ của kỳ.</div>` : "");
+  let nhom = null, html = "";
+  CHI_TIEU.forEach(c => {
+    if (c.mang !== nhom) { nhom = c.mang; html += `<tr class="nhom"><td colspan="4">${esc(nhom)}</td></tr>`; }
+    const v = giaTri ? giaTri[c.ma] : undefined;
+    html += `<tr class="${v === undefined ? "trong" : ""}"><td>${c.ma}</td><td>${esc(c.ten)}</td><td>${esc(c.dvt)}</td><td class="so">${v === undefined ? "để trống" : fmt(v)}</td></tr>`;
+  });
+  $("xtBang").innerHTML = html;
+  $("xtLuu").disabled = loi.length > 0;
+  $("khoiXemTruoc").classList.remove("an");
+  $("khoiXemTruoc").scrollIntoView({ behavior: "smooth" });
+}
+
+const vung = $("vungTha");
+vung.onclick = () => $("fileExcel").click();
+$("fileExcel").onchange = e => { if (e.target.files[0]) xuLyFile(e.target.files[0]); e.target.value = ""; };
+vung.addEventListener("dragover", e => { e.preventDefault(); vung.classList.add("keo"); });
+vung.addEventListener("dragleave", () => vung.classList.remove("keo"));
+vung.addEventListener("drop", e => { e.preventDefault(); vung.classList.remove("keo"); if (e.dataTransfer.files[0]) xuLyFile(e.dataTransfer.files[0]); });
+$("xtHuy").onclick = () => { docDuoc = null; $("khoiXemTruoc").classList.add("an"); };
+
+$("xtLuu").onclick = async () => {
+  if (!docDuoc || !docDuoc.ky) return;
+  const { ky, giaTri } = docDuoc;
+  $("xtLuu").disabled = true;
+  const { error } = await sb.rpc("luu_ky_bao_cao", {
+    p_ma: ky.ma, p_ten: ky.ten, p_loai: ky.loai, p_so: ky.so, p_nam: ky.nam, p_thu_tu: ky.thu_tu,
+    p_hien: $("xtHien").checked, p_chi_so: giaTri
+  });
+  $("xtLuu").disabled = false;
+  if (error) return baoLoi(error, "Lưu kỳ báo cáo");
+  toast(`Đã lưu ${ky.ten}`);
+  $("khoiXemTruoc").classList.add("an");
+  $("ketQuaDoc").innerHTML = `<div class="tb ok">Đã lưu ${esc(ky.ten)} với ${Object.keys(giaTri).length} chỉ tiêu.</div>`;
+  docDuoc = null; taiDsKy();
+};
+
+/* ===================== CÁC KỲ ===================== */
+async function taiDsKy() {
+  const { data, error } = await sb.from("ky_bao_cao").select("*, chi_so(count)")
+    .order("nam", { ascending: false }).order("thu_tu", { ascending: false }).order("ngay_tai", { ascending: false });
+  if (error) return baoLoi(error, "Tải danh sách kỳ");
+  $("bangKy").innerHTML = data.length ? data.map(k => `
+    <tr>
+      <td><b>${esc(k.ten)}</b> ${k.dang_hien ? '<span class="the-nho">Đang hiện</span>' : ""}</td>
+      <td>${k.chi_so[0] ? k.chi_so[0].count : 0}</td>
+      <td>${new Date(k.ngay_tai).toLocaleString("vi-VN")}</td>
+      <td style="text-align:right;white-space:nowrap">
+        ${k.dang_hien ? "" : `<button class="nut phu nho" data-hien="${k.id}">Hiện lên màn hình</button>`}
+        <button class="nut xoa nho" data-xoa="${k.id}" data-ten="${esc(k.ten)}">Xóa</button>
+      </td>
+    </tr>`).join("") : `<tr><td colspan="4">Chưa có kỳ nào.</td></tr>`;
+}
+$("bangKy").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.hien) {
+    const { error } = await sb.rpc("chon_ky_hien", { p_ky: b.dataset.hien });
+    if (error) return baoLoi(error, "Chọn kỳ hiển thị");
+    toast("Đã chọn kỳ hiện lên màn hình"); taiDsKy();
+  }
+  if (b.dataset.xoa) {
+    if (!confirm(`Xóa toàn bộ số liệu của “${b.dataset.ten}”?`)) return;
+    const { error } = await sb.from("ky_bao_cao").delete().eq("id", b.dataset.xoa);
+    if (error) return baoLoi(error, "Xóa kỳ");
+    toast("Đã xóa kỳ"); taiDsKy();
+  }
+});
+
+/* ===================== ẢNH ===================== */
+function thuNhoAnh(file, rongToiDa = 1920) {
+  return new Promise((ok, loi) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, rongToiDa / img.width);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? ok(b) : loi(new Error("Không xử lý được ảnh")), "image/jpeg", 0.86);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => loi(new Error("File không phải ảnh hợp lệ"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+$("formAnh").addEventListener("submit", async e => {
+  e.preventDefault();
+  const file = $("anhFile").files[0]; if (!file) return;
+  const nut = $("nutTaiAnh"); nut.disabled = true; nut.textContent = "Đang tải…";
+  try {
+    const blob = await thuNhoAnh(file);
+    const duongDan = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const up = await sb.storage.from("anh-trinh-chieu").upload(duongDan, blob, { contentType: "image/jpeg" });
+    if (up.error) throw up.error;
+    const { data: max } = await sb.from("anh_trinh_chieu").select("thu_tu").order("thu_tu", { ascending: false }).limit(1);
+    const { error } = await sb.from("anh_trinh_chieu").insert({
+      duong_dan: duongDan, dia_phuong: $("anhDiaPhuong").value.trim(),
+      noi_dung: $("anhNoiDung").value.trim() || null, nguon: $("anhNguon").value.trim() || null,
+      thu_tu: (max && max[0] ? max[0].thu_tu : 0) + 1
+    });
+    if (error) { await sb.storage.from("anh-trinh-chieu").remove([duongDan]); throw error; }
+    e.target.reset(); toast("Đã tải ảnh lên"); taiDsAnh();
+  } catch (err) { baoLoi(err, "Tải ảnh"); }
+  nut.disabled = false; nut.textContent = "Tải ảnh lên";
+});
+
+async function taiDsAnh() {
+  const { data, error } = await sb.from("anh_trinh_chieu").select("*").order("thu_tu").order("id");
+  if (error) return baoLoi(error, "Tải danh sách ảnh");
+  if (!data.length) { $("dsAnh").innerHTML = `<p class="mo">Chưa có ảnh nào.</p>`; return; }
+  const { data: urls } = await sb.storage.from("anh-trinh-chieu").createSignedUrls(data.map(a => a.duong_dan), 3600);
+  $("dsAnh").innerHTML = data.map((a, i) => `
+    <div class="o-anh ${a.hien ? "" : "an-mo"}" data-id="${a.id}" data-duong="${esc(a.duong_dan)}">
+      <img src="${urls && urls[i] ? urls[i].signedUrl : ""}" alt="">
+      <div class="nd">
+        <input data-f="dia_phuong" value="${esc(a.dia_phuong)}" placeholder="Địa phương">
+        <input data-f="noi_dung" value="${esc(a.noi_dung)}" placeholder="Nội dung">
+        <input data-f="nguon" value="${esc(a.nguon)}" placeholder="Nguồn">
+        <div class="hang">
+          <label>Thứ tự <input data-f="thu_tu" type="number" value="${a.thu_tu}" style="width:64px;margin:0"></label>
+          <label class="hang" style="gap:4px"><input data-f="hien" type="checkbox" ${a.hien ? "checked" : ""} style="width:auto;margin:0"> Hiện</label>
+          <span style="flex:1"></span>
+          <button class="nut nho" data-luu>Lưu</button>
+          <button class="nut xoa nho" data-xoa>Xóa</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+$("dsAnh").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const o = b.closest(".o-anh"), id = o.dataset.id;
+  if (b.hasAttribute("data-luu")) {
+    const g = f => o.querySelector(`[data-f=${f}]`);
+    if (!g("dia_phuong").value.trim()) return alert("Cần nhập địa phương.");
+    const { error } = await sb.from("anh_trinh_chieu").update({
+      dia_phuong: g("dia_phuong").value.trim(), noi_dung: g("noi_dung").value.trim() || null,
+      nguon: g("nguon").value.trim() || null, thu_tu: Number(g("thu_tu").value) || 0, hien: g("hien").checked
+    }).eq("id", id);
+    if (error) return baoLoi(error, "Lưu ảnh");
+    toast("Đã lưu"); taiDsAnh();
+  }
+  if (b.hasAttribute("data-xoa")) {
+    if (!confirm("Xóa ảnh này?")) return;
+    const { error } = await sb.from("anh_trinh_chieu").delete().eq("id", id);
+    if (error) return baoLoi(error, "Xóa ảnh");
+    await sb.storage.from("anh-trinh-chieu").remove([o.dataset.duong]);
+    toast("Đã xóa ảnh"); taiDsAnh();
+  }
+});
+
+/* ===================== TIN CHẠY CHỮ ===================== */
+async function taiDsTin() {
+  const { data, error } = await sb.from("tin_noi_bat").select("*").order("thu_tu").order("id");
+  if (error) return baoLoi(error, "Tải danh sách tin");
+  $("dsTin").innerHTML = data.length ? data.map(t => `
+    <div class="dong-tin" data-id="${t.id}">
+      <input type="text" data-f="noi_dung" value="${esc(t.noi_dung)}">
+      <input type="number" data-f="thu_tu" value="${t.thu_tu}">
+      <label class="hang" style="gap:4px"><input type="checkbox" data-f="hien" ${t.hien ? "checked" : ""}> Hiện</label>
+      <button class="nut nho" data-luu>Lưu</button>
+      <button class="nut xoa nho" data-xoa>Xóa</button>
+    </div>`).join("") : `<p class="mo" style="margin-top:10px">Chưa có tin nào.</p>`;
+}
+$("formTin").addEventListener("submit", async e => {
+  e.preventDefault();
+  const nd = $("tinMoi").value.trim(); if (!nd) return;
+  const { data: max } = await sb.from("tin_noi_bat").select("thu_tu").order("thu_tu", { ascending: false }).limit(1);
+  const { error } = await sb.from("tin_noi_bat").insert({ noi_dung: nd, thu_tu: (max && max[0] ? max[0].thu_tu : 0) + 1 });
+  if (error) return baoLoi(error, "Thêm tin");
+  $("tinMoi").value = ""; toast("Đã thêm tin"); taiDsTin();
+});
+$("dsTin").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const d = b.closest(".dong-tin"), id = d.dataset.id, g = f => d.querySelector(`[data-f=${f}]`);
+  if (b.hasAttribute("data-luu")) {
+    if (!g("noi_dung").value.trim()) return alert("Nội dung tin không được để trống.");
+    const { error } = await sb.from("tin_noi_bat").update({
+      noi_dung: g("noi_dung").value.trim(), thu_tu: Number(g("thu_tu").value) || 0, hien: g("hien").checked
+    }).eq("id", id);
+    if (error) return baoLoi(error, "Lưu tin");
+    toast("Đã lưu tin"); taiDsTin();
+  }
+  if (b.hasAttribute("data-xoa")) {
+    if (!confirm("Xóa tin này?")) return;
+    const { error } = await sb.from("tin_noi_bat").delete().eq("id", id);
+    if (error) return baoLoi(error, "Xóa tin");
+    toast("Đã xóa tin"); taiDsTin();
+  }
+});
+
+kiemTra();
+</script>
+</body>
+</html>
