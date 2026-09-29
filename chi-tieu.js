@@ -398,7 +398,8 @@ window.HIEN_THI = {
     { ma: "vb_bvnt", nhan: "Bảo vệ nền tảng TT" }
   ],
 
-  /* Các mảng xoay vòng. Mảng nào kỳ này không có số nào sẽ tự bỏ qua. */
+  /* Các mảng xoay vòng. Mảng nào kỳ này không có số nào sẽ tự bỏ qua.
+     Mỗi mảng hiện tối đa 4 số liệu, ưu tiên theo thứ tự khai báo; số nào kỳ này trống thì lấy số kế tiếp. */
   mang: [
     {
       ten: "Lý luận chính trị", mau: "do",
@@ -423,7 +424,10 @@ window.HIEN_THI = {
       soLieu: [
         { ma: "nq_diemcau",    mo: "điểm cầu kết nối hội nghị trực tuyến" },
         { ma: "nq_hn_bu",      mo: "hội nghị trực tiếp cho cán bộ, đảng viên chưa tham gia" },
-        { ma: "nq_vb_phobien", mo: "văn bản của Trung ương, Tỉnh ủy được phổ biến đến cơ sở" }
+        { ma: "nq_vb_phobien", mo: "văn bản của Trung ương, Tỉnh ủy được phổ biến đến cơ sở" },
+        { ma: "nq_hn",         mo: "hội nghị học tập, quán triệt nghị quyết, chỉ thị, kết luận" },
+        { ma: "nq_luot",       mo: "lượt đại biểu dự học tập, quán triệt" },
+        { ma: "nq_vb",         mo: "văn bản học tập, quán triệt tham mưu ban hành" }
       ],
       bieuDo: [{
         tieuDe: "Đảng bộ trực thuộc đã xây dựng kế hoạch học tập nghị quyết", loai: "vong",

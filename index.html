@@ -407,7 +407,7 @@ function veBieuDo(canvas, cfg, mauChinh) {
 const co = (v, m) => typeof v[m] === "number" && !isNaN(v[m]);
 
 function giaiMang(m, v) {
-  const soLieu = (m.soLieu || []).filter(s => co(v, s.ma)).map(s => ({
+  const soLieu = (m.soLieu || []).filter(s => co(v, s.ma)).slice(0, 4).map(s => ({
     so: s.phanTram ? fmt(Math.round(v[s.ma] * 100) / 100) + "%" : fmt(v[s.ma]), mo: s.mo
   }));
   const bieuDo = [];
