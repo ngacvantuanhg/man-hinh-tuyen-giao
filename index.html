@@ -287,10 +287,16 @@ const CAU_HINH = {
   giayMoiMang: 15,      // thời gian hiển thị mỗi mảng
   giayMoiAnh: 8,        // thời gian mỗi ảnh
   tocDoChuChay: 110,    // pixel mỗi giây
-  phutTaiLai: 30,       // tự tải lại trang để cập nhật số liệu, ảnh, tin
+  phutTaiLai: 30,       // tự tải lại trang để cập nhật số liệu, ảnh, tin (ảnh đã lưu trên máy thì không tải lại)
   giayThuLai: 60        // mất mạng thì thử lại sau
 };
 const TIN_MAC_DINH = ["Ban Tuyên giáo Tỉnh ủy Tuyên Quang"];
+
+/* Bộ nhớ đệm ảnh trình chiếu trên máy TV.
+   Mỗi ảnh chỉ tải từ Supabase MỘT LẦN, sau đó lấy từ bộ nhớ của trình duyệt.
+   Đổi "v1" thành "v2" nếu muốn buộc máy TV tải lại toàn bộ ảnh. */
+const BO_NHO_ANH = "mhdh-anh-v1";
+const BUCKET_ANH = "anh-trinh-chieu";
 
 const MAU_MANG = { do: "#E0243F", navy: "#4F8FE0" };
 const mauCua = k => MAU_MANG[k] || MAU_MANG.do;
@@ -539,6 +545,70 @@ function veChuChay(ds) {
   })(performance.now());
 }
 
+/* ===================== ẢNH TRÌNH CHIẾU: TẢI MỘT LẦN, LƯU TRÊN MÁY ===================== */
+/* Trước đây: mỗi lần trang tự tải lại (30 phút/lần) đều xin link ký mới.
+   Link ký mỗi lần một khác nên trình duyệt không dùng lại được ảnh cũ,
+   toàn bộ ảnh bị tải lại từ Supabase 48 lần/ngày. Đó là chỗ ngốn băng thông.
+   Bây giờ: ảnh được cất vào bộ nhớ đệm (Cache Storage) của trình duyệt theo tên file.
+   Ảnh đã có thì lấy luôn trên máy, chỉ ảnh mới thêm mới tải về. */
+const khoaAnh = ten => new URL("__anh-trinh-chieu__/" + encodeURIComponent(ten), location.href).href;
+let urlTamCu = [];
+
+async function layDanhSachAnh(anh) {
+  if (!anh.length) return [];
+  const blobTheoTen = new Map();
+  const coBoNho = "caches" in window;
+  let kho = null;
+
+  if (coBoNho) {
+    try {
+      kho = await caches.open(BO_NHO_ANH);
+      for (const a of anh) {
+        const r = await kho.match(khoaAnh(a.duong_dan));
+        if (r) blobTheoTen.set(a.duong_dan, await r.blob());
+      }
+    } catch (e) { console.warn("Không mở được bộ nhớ đệm ảnh:", e); kho = null; }
+  }
+
+  const thieu = anh.filter(a => !blobTheoTen.has(a.duong_dan));
+  if (thieu.length) {
+    try {
+      const { data: urls, error } = await sb.storage.from(BUCKET_ANH).createSignedUrls(thieu.map(a => a.duong_dan), 600);
+      if (error) throw error;
+      for (let i = 0; i < thieu.length; i++) {
+        const u = urls[i] && urls[i].signedUrl;
+        if (!u) continue;
+        try {
+          const res = await fetch(u);
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          blobTheoTen.set(thieu[i].duong_dan, blob);
+          if (kho) await kho.put(khoaAnh(thieu[i].duong_dan),
+            new Response(blob, { headers: { "Content-Type": blob.type || "image/jpeg" } }));
+        } catch (e) { console.warn("Không tải được ảnh", thieu[i].duong_dan, e); }
+      }
+    } catch (e) {
+      console.warn("Không xin được link ảnh mới, dùng ảnh đã lưu trên máy:", e);
+    }
+  }
+
+  /* Dọn ảnh đã bị xóa hoặc ẩn khỏi danh sách để bộ nhớ không phình ra */
+  if (kho) {
+    try {
+      const giu = new Set(anh.map(a => khoaAnh(a.duong_dan)));
+      for (const req of await kho.keys()) if (!giu.has(req.url)) await kho.delete(req);
+    } catch (e) { console.warn(e); }
+  }
+
+  urlTamCu.forEach(u => URL.revokeObjectURL(u));
+  urlTamCu = [];
+  return anh.filter(a => blobTheoTen.has(a.duong_dan)).map(a => {
+    const url = URL.createObjectURL(blobTheoTen.get(a.duong_dan));
+    urlTamCu.push(url);
+    return { ...a, url };
+  });
+}
+
 /* ===================== TẢI DỮ LIỆU ===================== */
 function baoLoi(hien) { document.getElementById("baoLoi").style.display = hien ? "block" : "none"; }
 
@@ -569,12 +639,7 @@ async function taiDuLieu() {
 
     const { data: anh, error: e4 } = await sb.from("anh_trinh_chieu").select("*").eq("hien", true).order("thu_tu").order("id");
     if (e4) throw e4;
-    let dsAnh = [];
-    if (anh.length) {
-      const { data: urls, error: e5 } = await sb.storage.from("anh-trinh-chieu").createSignedUrls(anh.map(a => a.duong_dan), 12 * 3600);
-      if (e5) throw e5;
-      dsAnh = anh.map((a, i) => ({ ...a, url: urls[i] && urls[i].signedUrl })).filter(a => a.url);
-    }
+    const dsAnh = await layDanhSachAnh(anh);
 
     baoLoi(false);
     document.getElementById("kySoLieu").textContent = ky ? `Số liệu ${ky.ten}` : "Chưa có số liệu";
