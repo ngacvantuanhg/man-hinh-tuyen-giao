@@ -7,13 +7,13 @@
 -- Tài khoản quản trị (người tải số liệu, ảnh, tin)
 insert into public.quyen (user_id, vai_tro, ghi_chu)
 select id, 'quan_tri', 'Quản trị' from auth.users
-where email = 'EMAIL_QUAN_TRI@example.com'
+where email = 'tuan.quantri@gmail.com'
 on conflict (user_id) do update set vai_tro = excluded.vai_tro;
 
 -- Tài khoản máy TV (chỉ xem)
 insert into public.quyen (user_id, vai_tro, ghi_chu)
 select id, 'xem', 'Máy TV phòng họp' from auth.users
-where email = 'EMAIL_MAY_TV@example.com'
+where email = 'ngacvantuan.hg@gmail.com'
 on conflict (user_id) do update set vai_tro = excluded.vai_tro;
 
 -- Kiểm tra: phải thấy đủ 2 dòng
