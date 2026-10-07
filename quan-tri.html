@@ -89,7 +89,7 @@
   .dong-tin input[type=text] { padding: 7px 10px; border: 1px solid var(--vien); border-radius: 6px; width: 100%; }
   .dong-tin input[type=number] { padding: 7px 6px; border: 1px solid var(--vien); border-radius: 6px; width: 100%; }
 
-  #toast { position: fixed; right: 24px; bottom: 24px; background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 14px; opacity: 0; transform: translateY(10px); transition: .25s; pointer-events: none; }
+  #toast { position: fixed; right: 24px; bottom: 24px; background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 14px; opacity: 0; transform: translateY(10px); transition: .25s; pointer-events: none; max-width: 420px; }
   #toast.hien { opacity: 1; transform: none; }
 
   .dn { max-width: 400px; margin: 60px auto; text-align: center; }
@@ -97,6 +97,7 @@
   .dn h1 { font-size: 20px; margin: 12px 0 18px; }
   .dn input { width: 100%; padding: 11px 13px; border: 1px solid var(--vien); border-radius: 8px; margin-bottom: 10px; }
   .dn .nut { width: 100%; padding: 11px; }
+  .dn .tb { text-align: left; }
   @media (max-width: 700px) { .luoi2 { grid-template-columns: 1fr; } .dong-tin { grid-template-columns: 1fr 60px; } }
 </style>
 </head>
@@ -116,7 +117,7 @@
   <form id="formDN">
     <input type="email" id="dnEmail" placeholder="Email" autocomplete="username" required>
     <input type="password" id="dnMatKhau" placeholder="Mật khẩu" autocomplete="current-password" required>
-    <button class="nut" type="submit">Đăng nhập</button>
+    <button class="nut" type="submit" id="dnNut">Đăng nhập</button>
   </form>
   <div class="tb loi an" id="dnLoi"></div>
 </div>
@@ -167,7 +168,7 @@
   <section data-trang="anh" class="an">
     <div class="khoi">
       <h2>Thêm ảnh trình chiếu</h2>
-      <p class="mo">Ảnh được tự thu nhỏ về chiều rộng tối đa 1920 px trước khi tải lên. Nên ghi rõ nguồn ảnh.</p>
+      <p class="mo">Ảnh được tự nén trước khi tải lên (cạnh dài tối đa 1280 px, định dạng WebP), nên không cần nén trước. Nên ghi rõ nguồn ảnh.</p>
       <form id="formAnh">
         <label class="truong">Ảnh <input type="file" id="anhFile" accept="image/*" required></label>
         <div class="luoi2">
@@ -213,18 +214,48 @@ const $ = id => document.getElementById(id);
 const fmt = n => Number(n).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const BAN_DO_CT = Object.fromEntries(CHI_TIEU.map(c => [c.ma, c]));
-function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("hien"); clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove("hien"), 2600); }
-function baoLoi(err, viec) { console.error(err); alert(`${viec} không thành công.\n${err.message || err}`); }
+const coDung = b => b >= 1048576 ? (b / 1048576).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) + " MB" : Math.round(b / 1024) + " KB";
+function toast(t, giay = 2.6) { const el = $("toast"); el.textContent = t; el.classList.add("hien"); clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove("hien"), giay * 1000); }
+
+/* ===================== NHẬN DIỆN LỖI ===================== */
+/* Supabase trả mã 402 khi tổ chức vượt hạn mức gói miễn phí.
+   Trước đây mọi lỗi đăng nhập đều báo "sai mật khẩu", nay báo đúng nguyên nhân. */
+const TB_HAN_MUC = "Hệ thống dữ liệu (Supabase) đang tạm ngừng do vượt hạn mức sử dụng của gói miễn phí. Dữ liệu và tài khoản vẫn còn nguyên, hệ thống sẽ tự hoạt động lại khi sang chu kỳ sử dụng mới.";
+const TB_MAT_MANG = "Không kết nối được máy chủ dữ liệu. Kiểm tra kết nối Internet rồi thử lại.";
+
+function laLoiHanMuc(err) {
+  if (!err) return false;
+  const ma = Number(err.status || err.statusCode || 0);
+  const chu = `${err.message || ""} ${err.error || ""} ${err.code || ""}`;
+  return ma === 402 || /\b402\b|exceed|quota|restricted|payment required/i.test(chu);
+}
+function laLoiMang(err) {
+  if (!err) return false;
+  return err instanceof TypeError || err.status === 0 || /failed to fetch|networkerror|load failed/i.test(err.message || "");
+}
+function moTaLoi(err) {
+  if (laLoiHanMuc(err)) return TB_HAN_MUC;
+  if (laLoiMang(err)) return TB_MAT_MANG;
+  return (err && (err.message || err.error_description)) || String(err);
+}
+function baoLoi(err, viec) { console.error(err); alert(`${viec} không thành công.\n\n${moTaLoi(err)}`); }
+function hienLoiDN(t) { $("dnLoi").textContent = t; $("dnLoi").classList.remove("an"); }
 
 /* ===================== ĐĂNG NHẬP, PHÂN QUYỀN ===================== */
 async function kiemTra() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { $("manDN").classList.remove("an"); $("manChinh").classList.add("an"); $("tk").classList.add("an"); return; }
-  const { data: q } = await sb.from("quyen").select("vai_tro").maybeSingle();
+  const { data: q, error: eq } = await sb.from("quyen").select("vai_tro").maybeSingle();
   $("tkEmail").textContent = session.user.email; $("tk").classList.remove("an");
+  if (eq) {
+    console.error(eq);
+    $("manDN").classList.remove("an"); $("manChinh").classList.add("an");
+    hienLoiDN(laLoiHanMuc(eq) || laLoiMang(eq) ? moTaLoi(eq) : `Không kiểm tra được quyền tài khoản: ${moTaLoi(eq)}`);
+    return;
+  }
   if (!q || q.vai_tro !== "quan_tri") {
     $("manDN").classList.remove("an"); $("manChinh").classList.add("an");
-    $("dnLoi").textContent = "Tài khoản này không có quyền quản trị."; $("dnLoi").classList.remove("an");
+    hienLoiDN("Tài khoản này không có quyền quản trị.");
     return;
   }
   $("manDN").classList.add("an"); $("manChinh").classList.remove("an");
@@ -232,8 +263,20 @@ async function kiemTra() {
 }
 $("formDN").addEventListener("submit", async e => {
   e.preventDefault(); $("dnLoi").classList.add("an");
-  const { error } = await sb.auth.signInWithPassword({ email: $("dnEmail").value.trim(), password: $("dnMatKhau").value });
-  if (error) { $("dnLoi").textContent = "Email hoặc mật khẩu không đúng."; $("dnLoi").classList.remove("an"); return; }
+  const nut = $("dnNut"); nut.disabled = true; nut.textContent = "Đang đăng nhập…";
+  let error = null;
+  try {
+    ({ error } = await sb.auth.signInWithPassword({ email: $("dnEmail").value.trim(), password: $("dnMatKhau").value }));
+  } catch (err) { error = err; }
+  nut.disabled = false; nut.textContent = "Đăng nhập";
+  if (error) {
+    console.error(error);
+    if (laLoiHanMuc(error) || laLoiMang(error)) hienLoiDN(moTaLoi(error));
+    else if (error.code === "invalid_credentials" || /invalid login credentials/i.test(error.message || "")) hienLoiDN("Email hoặc mật khẩu không đúng.");
+    else if (error.code === "email_not_confirmed") hienLoiDN("Email này chưa được xác nhận.");
+    else hienLoiDN(`Không đăng nhập được: ${moTaLoi(error)}`);
+    return;
+  }
   kiemTra();
 });
 $("nutThoat").onclick = async () => { await sb.auth.signOut(); location.reload(); };
@@ -325,7 +368,13 @@ async function xuLyFile(file) {
   if (!ky && loi.length && !giaTri) { $("ketQuaDoc").innerHTML = loi.map(t => `<div class="tb loi">${esc(t)}</div>`).join(""); return; }
 
   let daCo = null;
-  if (ky) { const r = await sb.from("ky_bao_cao").select("id").eq("ma", ky.ma).maybeSingle(); daCo = r.data; }
+  if (ky) {
+    const r = await sb.from("ky_bao_cao").select("id").eq("ma", ky.ma).maybeSingle();
+    if (r.error && (laLoiHanMuc(r.error) || laLoiMang(r.error))) {
+      $("ketQuaDoc").innerHTML = `<div class="tb loi">${esc(moTaLoi(r.error))}</div>`; return;
+    }
+    daCo = r.data;
+  }
 
   $("xtTieuDe").textContent = ky ? `Xem trước: ${ky.ten}` : "Xem trước";
   const soCo = Object.keys(giaTri || {}).length;
@@ -401,31 +450,62 @@ $("bangKy").addEventListener("click", async e => {
   }
 });
 
-/* ===================== ẢNH ===================== */
-function thuNhoAnh(file, rongToiDa = 1920) {
-  return new Promise((ok, loi) => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, rongToiDa / img.width);
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      c.toBlob(b => b ? ok(b) : loi(new Error("Không xử lý được ảnh")), "image/jpeg", 0.86);
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => loi(new Error("File không phải ảnh hợp lệ"));
-    img.src = URL.createObjectURL(file);
-  });
+/* ===================== ẢNH: NÉN TRƯỚC KHI TẢI LÊN ===================== */
+const BUCKET_ANH = "anh-trinh-chieu";
+const CANH_DAI_TOI_DA = 1280;   // ô ảnh trên TV chỉ rộng khoảng 550 px, 1280 là dư nét
+const CHAT_LUONG_WEBP = 0.8;
+const CHAT_LUONG_JPEG = 0.82;   // dùng khi trình duyệt không xuất được WebP
+
+function canvasRaBlob(c, loai, chatLuong) {
+  return new Promise(ok => c.toBlob(b => ok(b), loai, chatLuong));
+}
+
+async function nenAnh(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, loi) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => loi(new Error("File không phải ảnh hợp lệ"));
+      i.src = url;
+    });
+    const k = Math.min(1, CANH_DAI_TOI_DA / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+
+    let blob = await canvasRaBlob(c, "image/webp", CHAT_LUONG_WEBP);
+    let duoi = "webp";
+    if (!blob || blob.type !== "image/webp") {
+      blob = await canvasRaBlob(c, "image/jpeg", CHAT_LUONG_JPEG);
+      duoi = "jpg";
+    }
+    if (!blob) throw new Error("Không xử lý được ảnh");
+
+    /* Ảnh gốc đã nhỏ gọn sẵn (đúng kích thước, nhẹ hơn bản nén) thì giữ nguyên */
+    const goc = { "image/webp": "webp", "image/jpeg": "jpg" }[file.type];
+    if (k === 1 && goc && file.size <= blob.size) return { blob: file, duoi: goc, rong: c.width, cao: c.height };
+    return { blob, duoi, rong: c.width, cao: c.height };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 $("formAnh").addEventListener("submit", async e => {
   e.preventDefault();
   const file = $("anhFile").files[0]; if (!file) return;
-  const nut = $("nutTaiAnh"); nut.disabled = true; nut.textContent = "Đang tải…";
+  const nut = $("nutTaiAnh"); nut.disabled = true; nut.textContent = "Đang nén ảnh…";
   try {
-    const blob = await thuNhoAnh(file);
-    const duongDan = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-    const up = await sb.storage.from("anh-trinh-chieu").upload(duongDan, blob, { contentType: "image/jpeg" });
+    const { blob, duoi, rong, cao } = await nenAnh(file);
+    nut.textContent = "Đang tải lên…";
+    const duongDan = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${duoi}`;
+    const up = await sb.storage.from(BUCKET_ANH).upload(duongDan, blob, {
+      contentType: blob.type || (duoi === "webp" ? "image/webp" : "image/jpeg"),
+      cacheControl: "31536000"   // tên file không bao giờ trùng nên cho trình duyệt giữ ảnh lâu dài
+    });
     if (up.error) throw up.error;
     const { data: max } = await sb.from("anh_trinh_chieu").select("thu_tu").order("thu_tu", { ascending: false }).limit(1);
     const { error } = await sb.from("anh_trinh_chieu").insert({
@@ -433,20 +513,75 @@ $("formAnh").addEventListener("submit", async e => {
       noi_dung: $("anhNoiDung").value.trim() || null, nguon: $("anhNguon").value.trim() || null,
       thu_tu: (max && max[0] ? max[0].thu_tu : 0) + 1
     });
-    if (error) { await sb.storage.from("anh-trinh-chieu").remove([duongDan]); throw error; }
-    e.target.reset(); toast("Đã tải ảnh lên"); taiDsAnh();
+    if (error) { await sb.storage.from(BUCKET_ANH).remove([duongDan]); throw error; }
+    await luuAnhVaoBoNho(duongDan, blob);   // ảnh vừa tải lên khỏi phải tải về lại để xem trước
+    e.target.reset();
+    toast(`Đã tải ảnh lên: ${rong}×${cao} px, ${coDung(file.size)} → ${coDung(blob.size)}`, 4);
+    taiDsAnh();
   } catch (err) { baoLoi(err, "Tải ảnh"); }
   nut.disabled = false; nut.textContent = "Tải ảnh lên";
 });
 
+/* ===================== ẢNH: XEM TRƯỚC CÓ BỘ NHỚ ĐỆM ===================== */
+/* Trước đây mỗi lần bấm Lưu một ảnh, trang tải lại TOÀN BỘ ảnh từ Supabase.
+   Nay ảnh đã xem một lần được giữ trong bộ nhớ trình duyệt, chỉ ảnh mới mới tải về. */
+const BO_NHO_ANH = "mhdh-quantri-anh-v1";
+const khoaAnh = ten => new URL("__anh-trinh-chieu__/" + encodeURIComponent(ten), location.href).href;
+let urlTamCu = [];
+
+async function moBoNho() {
+  if (!("caches" in window)) return null;
+  try { return await caches.open(BO_NHO_ANH); } catch (e) { console.warn(e); return null; }
+}
+async function luuAnhVaoBoNho(ten, blob) {
+  const kho = await moBoNho(); if (!kho) return;
+  try { await kho.put(khoaAnh(ten), new Response(blob, { headers: { "Content-Type": blob.type || "image/jpeg" } })); }
+  catch (e) { console.warn(e); }
+}
+
+async function layUrlXemTruoc(dsTen) {
+  const blobTheoTen = new Map();
+  const kho = await moBoNho();
+  if (kho) {
+    for (const ten of dsTen) {
+      try { const r = await kho.match(khoaAnh(ten)); if (r) blobTheoTen.set(ten, await r.blob()); } catch (e) { console.warn(e); }
+    }
+  }
+  const thieu = dsTen.filter(t => !blobTheoTen.has(t));
+  if (thieu.length) {
+    const { data: urls, error } = await sb.storage.from(BUCKET_ANH).createSignedUrls(thieu, 600);
+    if (error) console.warn("Không xin được link ảnh:", error);
+    else for (let i = 0; i < thieu.length; i++) {
+      const u = urls[i] && urls[i].signedUrl; if (!u) continue;
+      try {
+        const res = await fetch(u); if (!res.ok) continue;
+        const blob = await res.blob();
+        blobTheoTen.set(thieu[i], blob);
+        if (kho) await kho.put(khoaAnh(thieu[i]), new Response(blob, { headers: { "Content-Type": blob.type || "image/jpeg" } }));
+      } catch (e) { console.warn("Không tải được ảnh", thieu[i], e); }
+    }
+  }
+  if (kho) {
+    try {
+      const giu = new Set(dsTen.map(khoaAnh));
+      for (const req of await kho.keys()) if (!giu.has(req.url)) await kho.delete(req);
+    } catch (e) { console.warn(e); }
+  }
+  urlTamCu.forEach(u => URL.revokeObjectURL(u));
+  urlTamCu = [];
+  const ketQua = new Map();
+  blobTheoTen.forEach((blob, ten) => { const u = URL.createObjectURL(blob); urlTamCu.push(u); ketQua.set(ten, u); });
+  return ketQua;
+}
+
 async function taiDsAnh() {
   const { data, error } = await sb.from("anh_trinh_chieu").select("*").order("thu_tu").order("id");
   if (error) return baoLoi(error, "Tải danh sách ảnh");
-  if (!data.length) { $("dsAnh").innerHTML = `<p class="mo">Chưa có ảnh nào.</p>`; return; }
-  const { data: urls } = await sb.storage.from("anh-trinh-chieu").createSignedUrls(data.map(a => a.duong_dan), 3600);
-  $("dsAnh").innerHTML = data.map((a, i) => `
+  if (!data.length) { $("dsAnh").innerHTML = `<p class="mo">Chưa có ảnh nào.</p>`; await layUrlXemTruoc([]); return; }
+  const urlTheoTen = await layUrlXemTruoc(data.map(a => a.duong_dan));
+  $("dsAnh").innerHTML = data.map(a => `
     <div class="o-anh ${a.hien ? "" : "an-mo"}" data-id="${a.id}" data-duong="${esc(a.duong_dan)}">
-      <img src="${urls && urls[i] ? urls[i].signedUrl : ""}" alt="">
+      <img src="${urlTheoTen.get(a.duong_dan) || ""}" alt="">
       <div class="nd">
         <input data-f="dia_phuong" value="${esc(a.dia_phuong)}" placeholder="Địa phương">
         <input data-f="noi_dung" value="${esc(a.noi_dung)}" placeholder="Nội dung">
@@ -478,7 +613,7 @@ $("dsAnh").addEventListener("click", async e => {
     if (!confirm("Xóa ảnh này?")) return;
     const { error } = await sb.from("anh_trinh_chieu").delete().eq("id", id);
     if (error) return baoLoi(error, "Xóa ảnh");
-    await sb.storage.from("anh-trinh-chieu").remove([o.dataset.duong]);
+    await sb.storage.from(BUCKET_ANH).remove([o.dataset.duong]);
     toast("Đã xóa ảnh"); taiDsAnh();
   }
 });
