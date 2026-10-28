@@ -786,6 +786,7 @@ async function taiDuLieu() {
     veChuChay(tinDP.length ? tinDP : tin.map(t => t.noi_dung));
 
     setTimeout(() => location.reload(), CAU_HINH.phutTaiLai * 60 * 1000);
+    langNgheThayDoi();
   } catch (err) {
     console.error(err);
     if (err && (err.status === 401 || /JWT|token/i.test(err.message || ""))) {
@@ -795,6 +796,34 @@ async function taiDuLieu() {
     baoLoi(true);
     setTimeout(taiDuLieu, CAU_HINH.giayThuLai * 1000);
   }
+}
+
+
+/* ===================== CẬP NHẬT TỨC THÌ =====================
+   Lắng nghe Supabase Realtime: trang quản trị lưu số liệu, ảnh, tin, điểm bản đồ
+   thì màn hình tự tải lại sau vài giây, không cần bấm F5.
+   Nếu kết nối tức thì không được (chưa chạy buoc6, mạng chặn) thì tự tải lại mỗi 5 phút. */
+let daLangNghe = false;
+function langNgheThayDoi() {
+  if (daLangNghe) return; daLangNghe = true;
+  let hen = null, duPhong = null;
+  const taiLaiSau = (giay) => {
+    clearTimeout(hen);
+    hen = setTimeout(() => location.reload(), giay * 1000);   // gom nhiều thay đổi liền nhau thành 1 lần tải
+  };
+  const batDuPhong = () => { if (!duPhong) duPhong = setInterval(() => location.reload(), 5 * 60 * 1000); };
+  const kenh = sb.channel("man-hinh-theo-doi");
+  ["ky_bao_cao", "chi_so", "tin_noi_bat", "anh_trinh_chieu", "mh_diem_ban_do"].forEach(bang =>
+    kenh.on("postgres_changes", { event: "*", schema: "public", table: bang }, () => {
+      console.log("Có thay đổi ở bảng", bang, "- tải lại màn hình");
+      taiLaiSau(4);
+    }));
+  kenh.subscribe(trangThai => {
+    console.log("Kết nối cập nhật tức thì:", trangThai);
+    if (trangThai === "SUBSCRIBED") { clearInterval(duPhong); duPhong = null; }
+    if (trangThai === "CHANNEL_ERROR" || trangThai === "TIMED_OUT" || trangThai === "CLOSED") batDuPhong();
+  });
+  setTimeout(() => { if (kenh.state !== "joined") batDuPhong(); }, 30000);
 }
 
 /* ===================== ĐĂNG NHẬP ===================== */
