@@ -224,7 +224,7 @@
   <section data-trang="banDo" class="an">
     <div class="khoi">
       <h2 id="bdTieuDeForm">Thêm điểm dư luận lên bản đồ</h2>
-      <p class="mo">Bấm vào bản đồ để chọn xã gần nhất, hoặc gõ tên xã. Điểm tự ẩn khỏi màn hình sau ngày “Hiện đến”.</p>
+      <p class="mo">Bấm vào bản đồ để chọn xã gần nhất, hoặc gõ tên xã. Tin chung của cả tỉnh thì chọn <b>Toàn tỉnh</b> (đầu danh sách gợi ý). Điểm tự ẩn khỏi màn hình sau ngày “Hiện đến”.</p>
       <div class="bd-luoi">
         <div class="bd-nho">
           <svg id="bdSvg" viewBox="0 0 284 440" aria-label="Bản đồ chọn xã"></svg>
@@ -233,7 +233,7 @@
         <form id="formDiem">
           <input type="hidden" id="dId">
           <div class="luoi3">
-            <label class="truong">Xã, phường <input type="text" id="dXa" list="dsXa" required placeholder="Gõ tên xã…" autocomplete="off"></label>
+            <label class="truong">Xã, phường <input type="text" id="dXa" list="dsXa" required placeholder="Gõ tên xã hoặc “Toàn tỉnh”…" autocomplete="off"></label>
             <label class="truong">Sắc thái
               <select id="dSacThai"><option value="tieu_cuc">Tiêu cực</option><option value="tich_cuc">Tích cực</option></select></label>
             <label class="truong">Mức độ
@@ -329,8 +329,11 @@ const ngayISO = (d = new Date()) => new Date(d - d.getTimezoneOffset() * 60000).
 const congNgay = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return ngayISO(d); };
 const ngayVN = iso => iso ? iso.split("-").reverse().join("/") : "";
 let dsDiem = [], chieu = null;
-$("dsXa").innerHTML = XA.map(x => `<option value="${esc(x.ten)}">`).join("");
-const timXa = ten => { const t = String(ten || "").trim().toLowerCase(); return XA.find(x => x.ten.toLowerCase() === t || x.ngan.toLowerCase() === t); };
+// "Toàn tỉnh": tin chung của tỉnh, không gắn với xã nào. Lưu tọa độ trung tâm tỉnh, TV hiện ở ô TOÀN TỈNH góc bản đồ.
+const TOAN_TINH = { ten: "Toàn tỉnh", ngan: "Toàn tỉnh", lat: 22.35, lon: 105.0, tinh: true };
+const laTinhD = d => /^toàn tỉnh$/i.test(String(d.ten_xa || "").trim());
+$("dsXa").innerHTML = `<option value="Toàn tỉnh">` + XA.map(x => `<option value="${esc(x.ten)}">`).join("");
+const timXa = ten => { const t = String(ten || "").trim().toLowerCase(); if (t === "toàn tỉnh" || t === "tỉnh") return TOAN_TINH; return XA.find(x => x.ten.toLowerCase() === t || x.ngan.toLowerCase() === t); };
 
 function chieuBD(w, h, le) {
   const k = Math.cos(22.45 * Math.PI / 180);
@@ -349,16 +352,22 @@ function veBDNho() {
   const xa = XA.map(x => { const [a, b] = p(x.lon, x.lat), on = chon === x;
     return `<circle cx="${r(a)}" cy="${r(b)}" r="${on ? 6 : 2.2}" fill="${on ? "#F5E236" : "rgba(220,230,242,.35)"}"><title>${esc(x.ten)}</title></circle>`; }).join("");
   const homNay = ngayISO();
-  const diem = dsDiem.filter(d => d.hien && d.hien_den >= homNay).map(d => { const [a, b] = p(+d.lon, +d.lat);
+  const dangHien = dsDiem.filter(d => d.hien && d.hien_den >= homNay);
+  const tinh = dangHien.filter(laTinhD);
+  const oTinh = `<g style="cursor:pointer"><rect x="2" y="2" width="${Math.max(92, 12 + tinh.length * 20)}" height="44" rx="7" fill="rgba(14,27,51,.9)" stroke="${chon && chon.tinh ? "#F5E236" : "rgba(245,226,54,.5)"}" stroke-width="${chon && chon.tinh ? 2 : 1}"/>
+    <text x="9" y="16" fill="#F5E236" font-size="10.5" font-weight="700">TOÀN TỈNH</text>
+    ${tinh.slice(0, 8).map((d, k) => `<circle cx="${16 + k * 20}" cy="31" r="7" fill="${MAU_D[loaiD(d)]}" stroke="#0E1B33" stroke-width="2"><title>${esc(d.tieu_de)}</title></circle>`).join("")}</g>`;
+  const diem = dangHien.filter(d => !laTinhD(d)).map(d => { const [a, b] = p(+d.lon, +d.lat);
     return `<circle cx="${r(a)}" cy="${r(b)}" r="7" fill="${MAU_D[loaiD(d)]}" stroke="#0E1B33" stroke-width="2"><title>${esc(d.ten_xa)}: ${esc(d.tieu_de)}</title></circle>`; }).join("");
-  const nhan = chon ? (() => { const [a, b] = p(chon.lon, chon.lat), phai = a < w * 0.6;
+  const nhan = chon && !chon.tinh ? (() => { const [a, b] = p(chon.lon, chon.lat), phai = a < w * 0.6;
     return `<text x="${r(a + (phai ? 10 : -10))}" y="${r(b + 4)}" text-anchor="${phai ? "start" : "end"}" fill="#fff" font-size="12" font-weight="700" paint-order="stroke" stroke="#0E1B33" stroke-width="3">${esc(chon.ngan)}</text>`; })() : "";
-  $("bdSvg").innerHTML = `<path d="${vien}" fill="rgba(79,143,224,.14)" stroke="rgba(138,180,240,.7)" stroke-width="1.2"/>${xa}${diem}${nhan}`;
+  $("bdSvg").innerHTML = `<path d="${vien}" fill="rgba(79,143,224,.14)" stroke="${chon && chon.tinh ? "#F5E236" : "rgba(138,180,240,.7)"}" stroke-width="${chon && chon.tinh ? 2.2 : 1.2}"/>${xa}${diem}${nhan}${oTinh}`;
 }
 $("bdSvg").addEventListener("click", e => {
   if (!chieu) return;
   const svg = $("bdSvg"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  if (q.x < 96 && q.y < 48 && svg.querySelector("rect")) { $("dXa").value = "Toàn tỉnh"; veBDNho(); return; }
   let gan = null, kc = Infinity;
   XA.forEach(x => { const [a, b] = chieu(x.lon, x.lat), d = (a - q.x) ** 2 + (b - q.y) ** 2; if (d < kc) { kc = d; gan = x; } });
   if (gan) { $("dXa").value = gan.ten; veBDNho(); }
@@ -481,8 +490,9 @@ $("dsTinDT").addEventListener("click", e => {
   else { $("dSacThai").value = "tieu_cuc"; $("dMucDo").value = "theo_doi"; }
   $("dMucDo").disabled = $("dSacThai").value === "tich_cuc";
   if (t.tom_tat) $("dTomTat").value = String(t.tom_tat).slice(0, 400);
-  const xa = doanXa(t.tieu_de) || doanXa(t.tom_tat || "");
-  if (xa) { $("dXa").value = xa.ten; $("dGoiY").textContent = `Đã đoán xã theo tên trong bài: ${xa.ten}. Kiểm tra lại trước khi lưu.`; }
+  let xa = doanXa(t.tieu_de) || doanXa(t.tom_tat || "");
+  if (!xa && /tỉnh ủy|ubnd tỉnh|hđnd tỉnh|ủy ban nhân dân tỉnh|tỉnh tuyên quang|toàn tỉnh|trên địa bàn tỉnh|tuyên quang/i.test(t.tieu_de + " " + (t.tom_tat || ""))) xa = TOAN_TINH;
+  if (xa) { $("dXa").value = xa.ten; $("dGoiY").textContent = xa.tinh ? "Tin chung của tỉnh, đã chọn “Toàn tỉnh”. Nếu tin nói về một xã cụ thể thì đổi lại." : `Đã đoán xã theo tên trong bài: ${xa.ten}. Kiểm tra lại trước khi lưu.`; }
   else $("dGoiY").textContent = "Không đoán được xã từ tiêu đề, anh chọn trên bản đồ giúp.";
   veBDNho(); $("formDiem").scrollIntoView({ behavior: "smooth", block: "center" });
 });
