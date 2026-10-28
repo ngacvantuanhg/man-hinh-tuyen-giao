@@ -687,7 +687,7 @@ $("formAnh").addEventListener("submit", async e => {
   try {
     const { blob, duoi, kieu } = await thuNhoAnh(file);
     const duongDan = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${duoi}`;
-    const up = await sb.storage.from("anh-trinh-chieu").upload(duongDan, blob, { contentType: kieu });
+    const up = await sb.storage.from("anh-trinh-chieu").upload(duongDan, blob, { contentType: kieu, cacheControl: "31536000" });   // tên file không bao giờ trùng nên cho trình duyệt lưu ảnh lâu
     if (up.error) throw up.error;
     console.log(`Ảnh gốc ${Math.round(file.size / 1024)} KB, sau nén ${Math.round(blob.size / 1024)} KB (${duoi})`);
     const { data: max } = await sb.from("anh_trinh_chieu").select("thu_tu").order("thu_tu", { ascending: false }).limit(1);

@@ -724,6 +724,25 @@ async function layTinDiaPhuong() {
   }
 }
 
+
+/* Link ảnh có chữ ký: giữ lại cùng một link trong 24 giờ để trình duyệt dùng ảnh đã lưu sẵn (cache),
+   không tải lại ảnh từ Supabase mỗi lần màn hình làm mới -> tiết kiệm lưu lượng (egress). */
+async function layUrlAnh(anh) {
+  const KHOA = "mhdh-url-anh", bay = Date.now();
+  let kho = {};
+  try { kho = JSON.parse(localStorage.getItem(KHOA) || "{}"); } catch (e) {}
+  const canMoi = anh.map(a => a.duong_dan).filter(d => !(kho[d] && kho[d].het > bay + 3600e3));
+  if (canMoi.length) {
+    const { data: urls, error } = await sb.storage.from("anh-trinh-chieu").createSignedUrls(canMoi, 24 * 3600);
+    if (error) throw error;
+    urls.forEach((u, i) => { if (u && u.signedUrl) kho[canMoi[i]] = { url: u.signedUrl, het: bay + 24 * 3600e3 }; });
+  }
+  const conDung = {};
+  anh.forEach(a => { if (kho[a.duong_dan]) conDung[a.duong_dan] = kho[a.duong_dan]; });   // bỏ link của ảnh đã xóa
+  try { localStorage.setItem(KHOA, JSON.stringify(conDung)); } catch (e) {}
+  return anh.map(a => ({ ...a, url: conDung[a.duong_dan] && conDung[a.duong_dan].url })).filter(a => a.url);
+}
+
 /* ===================== TẢI DỮ LIỆU ===================== */
 function baoLoi(hien) { document.getElementById("baoLoi").style.display = hien ? "block" : "none"; }
 
@@ -763,9 +782,7 @@ async function taiDuLieu() {
     if (e4) throw e4;
     let dsAnh = [];
     if (anh.length) {
-      const { data: urls, error: e5 } = await sb.storage.from("anh-trinh-chieu").createSignedUrls(anh.map(a => a.duong_dan), 12 * 3600);
-      if (e5) throw e5;
-      dsAnh = anh.map((a, i) => ({ ...a, url: urls[i] && urls[i].signedUrl })).filter(a => a.url);
+      dsAnh = await layUrlAnh(anh);
     }
 
     baoLoi(false);
