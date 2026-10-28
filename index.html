@@ -11,7 +11,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
+<script src="config-diem-tin.js"></script>
 <script src="chi-tieu.js"></script>
+<script src="ban-do-tq.js"></script>
 <style>
   :root {
     --do: #E0243F;
@@ -45,7 +47,7 @@
       radial-gradient(ellipse 60% 40% at 50% -5%, rgba(46, 96, 170, .28), transparent 70%),
       #081326;
     display: grid;
-    grid-template-rows: 104px 168px 1fr 60px;
+    grid-template-rows: 92px 100px 1fr 56px;
     row-gap: 0;
     overflow: hidden;
   }
@@ -61,11 +63,11 @@
     content: ""; position: absolute; left: 0; bottom: -1px; width: 220px; height: 2px;
     background: linear-gradient(90deg, var(--do), var(--vang-chanh));
   }
-  .logo { width: 72px; height: 72px; flex: none; }
+  .logo { width: 64px; height: 64px; flex: none; }
   .logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .ten-co-quan { flex: 1; }
   .ten-co-quan .dong1 { font-size: 15px; font-weight: 500; letter-spacing: .14em; color: var(--chu-phu); }
-  .ten-co-quan .dong2 { font-size: 36px; font-weight: 700; letter-spacing: .06em; line-height: 1.15; color: var(--trang); }
+  .ten-co-quan .dong2 { font-size: 32px; font-weight: 700; letter-spacing: .06em; line-height: 1.15; color: var(--trang); }
   .ky-so-lieu {
     border: 1px solid rgba(245, 226, 54, .45);
     color: var(--vang-chanh);
@@ -74,31 +76,31 @@
   }
   .ky-so-lieu small { display: none; }
   .dong-ho { text-align: right; min-width: 260px; }
-  .dong-ho .gio { font-size: 44px; font-weight: 600; line-height: 1; color: var(--trang); letter-spacing: .02em; }
+  .dong-ho .gio { font-size: 40px; font-weight: 600; line-height: 1; color: var(--trang); letter-spacing: .02em; }
   .dong-ho .ngay { font-size: 16px; font-weight: 500; margin-top: 6px; color: var(--chu-phu); }
 
   /* HÀNG CHỈ SỐ CHÍNH */
   .chi-so {
     display: grid; grid-template-columns: repeat(6, 1fr);
-    gap: 16px; padding: 20px 40px 0;
+    gap: 14px; padding: 14px 40px 0;
   }
   .the {
     background: var(--mat);
     border: 1px solid var(--vien);
-    border-radius: 14px;
-    padding: 14px 20px;
-    display: flex; flex-direction: column; justify-content: center; gap: 4px; overflow: hidden;
+    border-radius: 12px;
+    padding: 8px 18px;
+    display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 14px; align-content: center; overflow: hidden;
   }
-  .the .linh-vuc { font-size: 14px; font-weight: 500; color: var(--chu-phu); display: flex; align-items: center; gap: 8px; }
+  .the .linh-vuc { grid-column: 1 / -1; font-size: 13px; font-weight: 500; color: var(--chu-phu); display: flex; align-items: center; gap: 8px; }
   .the .linh-vuc::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--mau, var(--do)); }
-  .the .so { font-size: 44px; font-weight: 700; line-height: 1.05; color: var(--trang); }
-  .the .ten { font-size: 15px; font-weight: 400; color: var(--chu-phu); line-height: 1.3;
+  .the .so { font-size: 36px; font-weight: 700; line-height: 1.1; color: var(--trang); }
+  .the .ten { font-size: 14px; font-weight: 400; color: var(--chu-phu); line-height: 1.25; align-self: center;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
   /* VÙNG CHÍNH */
   main {
-    display: grid; grid-template-columns: 1236px 1fr;
-    gap: 20px; padding: 20px 40px 20px; min-height: 0;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 470px 1fr;
+    gap: 16px 20px; padding: 16px 40px 14px; min-height: 0;
   }
   .khung {
     background: var(--mat);
@@ -107,35 +109,34 @@
     position: relative; overflow: hidden;
   }
 
-  #mang { display: grid; grid-template-rows: 76px 1fr; }
+  #mang { display: grid; grid-template-rows: 58px 1fr; }
   .mang-dau {
     display: flex; align-items: center; gap: 16px;
-    padding: 0 30px;
+    padding: 0 24px;
     border-bottom: 1px solid var(--vien);
   }
   .mang-dau .vach { width: 4px; height: 28px; border-radius: 2px; background: var(--vang-chanh); }
-  .mang-dau h2 { font-size: 28px; font-weight: 700; flex: 1; color: var(--trang); }
+  .mang-dau h2 { font-size: 23px; font-weight: 700; flex: 1; color: var(--trang); }
   .cham { display: flex; gap: 8px; align-items: center; }
   .cham span { width: 8px; height: 8px; border-radius: 999px; background: rgba(255, 255, 255, .2); transition: width .4s ease, background .4s ease; }
   .cham span.on { width: 28px; background: var(--vang-chanh); }
-  .tien-do { position: absolute; left: 0; top: 75px; height: 2px; background: var(--vang-chanh); width: 0; opacity: .8; z-index: 3; }
+  .tien-do { position: absolute; left: 0; top: 57px; height: 2px; background: var(--vang-chanh); width: 0; opacity: .8; z-index: 3; }
   .mang-than {
-    display: grid; grid-template-columns: 380px 1fr;
-    gap: 36px; padding: 30px 30px 26px; min-height: 0;
+    display: grid; grid-template-columns: 290px 1fr;
+    gap: 26px; padding: 20px 24px 18px; min-height: 0;
   }
-  .so-lieu-mang { display: flex; flex-direction: column; gap: 26px; padding-top: 4px; }
+  .so-lieu-mang { display: flex; flex-direction: column; gap: 16px; padding-top: 2px; }
   .dong-so { border-left: 2px solid var(--mau-mang, var(--do)); padding: 2px 0 2px 20px; }
-  .dong-so b { display: block; font-size: 46px; font-weight: 700; line-height: 1.05; color: var(--vang-chanh); }
-  .dong-so span { display: block; margin-top: 6px; font-size: 16px; color: var(--chu-phu); line-height: 1.4; }
-  .vung-bieu-do { display: grid; gap: 22px; min-height: 0; }
+  .dong-so b { display: block; font-size: 38px; font-weight: 700; line-height: 1.05; color: var(--vang-chanh); }
+  .dong-so span { display: block; margin-top: 4px; font-size: 15px; color: var(--chu-phu); line-height: 1.4; }
+  .vung-bieu-do { display: grid; gap: 14px; min-height: 0; }
   .vung-bieu-do.hai { grid-template-rows: 1fr 1fr; }
   .bieu-do { position: relative; min-height: 0; display: flex; flex-direction: column; }
-  .bieu-do h3 { font-size: 16px; font-weight: 600; color: var(--chu-phu); margin-bottom: 10px; }
+  .bieu-do h3 { font-size: 15px; font-weight: 600; color: var(--chu-phu); margin-bottom: 6px; }
   .bieu-do .canvas-wrap { position: relative; flex: 1; min-height: 0; }
 
-  .cot-phai { display: grid; grid-template-rows: 1fr 320px; gap: 20px; min-height: 0; }
-  #vanban { padding: 22px 24px 16px; display: flex; flex-direction: column; }
-  #vanban h3 { font-size: 20px; font-weight: 700; color: var(--trang); }
+  #vanban { padding: 18px 24px 12px; display: flex; flex-direction: column; }
+  #vanban h3 { font-size: 19px; font-weight: 700; color: var(--trang); }
   #vanban p { font-size: 14px; color: var(--chu-phu); margin: 4px 0 8px; }
 
   #anh { background: #050C18; }
@@ -177,12 +178,47 @@
     will-change: transform;
   }
   .bang-chu .sao { color: var(--vang-chanh); margin: 0 24px; font-size: 12px; vertical-align: 3px; }
+  .bang-chu .nguon-tin { color: var(--chu-phu); font-size: 16px; margin-left: 8px; }
 
   @media (prefers-reduced-motion: reduce) { .anh-muc, .cham span { transition: none; } }
 
+
+  /* Ô BẢN ĐỒ DƯ LUẬN XÃ HỘI */
+  #banDo { display: grid; grid-template-columns: 300px 1fr; }
+  .bd-hinh { position: relative; border-right: 1px solid var(--vien); background:
+      radial-gradient(ellipse 80% 60% at 50% 45%, rgba(79,143,224,.10), transparent 75%); }
+  .bd-hinh svg { position: absolute; inset: 10px 8px 34px; width: calc(100% - 16px); height: calc(100% - 44px); overflow: visible; }
+  .bd-vien { fill: rgba(79,143,224,.10); stroke: rgba(138,180,240,.55); stroke-width: 1.4; stroke-linejoin: round; }
+  .bd-xa { fill: rgba(220,230,242,.22); }
+  .bd-diem circle.loi { stroke: #081326; stroke-width: 2; }
+  .bd-diem text.so { font: 700 12px "Be Vietnam Pro", Arial; fill: #081326; text-anchor: middle; dominant-baseline: central; }
+  .bd-diem text.ten { font: 600 12px "Be Vietnam Pro", Arial; fill: var(--trang); paint-order: stroke; stroke: #081326; stroke-width: 3px; }
+  .bd-diem .song { fill: none; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: song 2.4s ease-out infinite; }
+  @keyframes song { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+  .bd-chu-giai { position: absolute; left: 14px; right: 10px; bottom: 10px; display: flex; gap: 14px; font-size: 12.5px; color: var(--chu-phu); }
+  .bd-chu-giai i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+  .bd-noi-dung { display: grid; grid-template-rows: 58px auto 1fr; min-height: 0; }
+  .bd-dau { display: flex; align-items: center; gap: 14px; padding: 0 22px; border-bottom: 1px solid var(--vien); }
+  .bd-dau h2 { flex: 1; font-size: 21px; font-weight: 700; color: var(--trang); }
+  .bd-dau .vach { width: 4px; height: 24px; border-radius: 2px; background: var(--do); }
+  .bd-dem { display: flex; gap: 10px; padding: 12px 22px 4px; }
+  .bd-dem div { flex: 1; border-radius: 10px; padding: 8px 14px; background: rgba(255,255,255,.04); }
+  .bd-dem b { font-size: 26px; font-weight: 700; display: block; line-height: 1.1; }
+  .bd-dem span { font-size: 13px; color: var(--chu-phu); }
+  .bd-ds { list-style: none; padding: 6px 22px 12px; overflow: hidden; display: flex; flex-direction: column; gap: 9px; }
+  .bd-ds li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; }
+  .bd-ds .stt { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #081326; margin-top: 2px; }
+  .bd-ds .td { font-size: 15.5px; font-weight: 600; color: var(--trang); line-height: 1.32;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .bd-ds .ph { font-size: 13px; color: var(--chu-phu); margin-top: 2px; }
+  .bd-ds .nhan { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 0 8px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+  .nhan.xu-ly { background: rgba(224,36,63,.25); color: #FF8A9A; }
+  .nhan.theo-doi { background: rgba(245,159,58,.22); color: #FFC27A; }
+  .nhan.tich-cuc { background: rgba(52,195,143,.2); color: #7FE0B8; }
+
   /* Mảng chỉ có số, không có biểu đồ: dàn số lớn ra giữa */
   .mang-than.chi-so-lieu .so-lieu-mang { display: grid; grid-template-columns: repeat(2, 1fr); gap: 48px 56px; align-content: center; height: 100%; padding: 0 40px; }
-  .mang-than.chi-so-lieu .dong-so b { font-size: 76px; }
+  .mang-than.chi-so-lieu .dong-so b { font-size: 60px; }
   .mang-than.chi-so-lieu .dong-so span { font-size: 20px; }
 
   /* Trạng thái trống */
@@ -218,7 +254,7 @@
 
   /* Báo lỗi kết nối nhỏ ở góc */
   #baoLoi {
-    position: absolute; right: 40px; top: 112px; z-index: 20; display: none;
+    position: absolute; right: 40px; top: 98px; z-index: 20; display: none;
     background: rgba(224,36,63,.9); color: #fff; font-size: 14px; padding: 6px 14px; border-radius: 999px;
   }
 
@@ -252,18 +288,33 @@
       <div class="mang-than" id="mangThan"></div>
     </section>
 
-    <div class="cot-phai">
-      <section class="khung" id="vanban">
-        <h3>Văn bản tham mưu cấp ủy ban hành</h3>
-        <p id="vanbanTong"></p>
-        <div class="canvas-wrap" id="vanbanWrap" style="position:relative;flex:1;min-height:0"><canvas id="cvVanBan"></canvas></div>
-      </section>
-      <section class="khung" id="anh"></section>
-    </div>
+    <section class="khung" id="banDo">
+      <div class="bd-hinh">
+        <svg id="svgBanDo" aria-label="Bản đồ tỉnh Tuyên Quang"></svg>
+        <div class="bd-chu-giai">
+          <span><i style="background:#34C38F"></i>Tích cực</span>
+          <span><i style="background:#F59F3A"></i>Theo dõi</span>
+          <span><i style="background:#E0243F"></i>Cần xử lý</span>
+        </div>
+      </div>
+      <div class="bd-noi-dung">
+        <div class="bd-dau"><div class="vach"></div><h2>Dư luận xã hội trên địa bàn</h2></div>
+        <div class="bd-dem" id="bdDem"></div>
+        <ul class="bd-ds" id="bdDs"></ul>
+      </div>
+    </section>
+
+    <section class="khung" id="vanban">
+      <h3>Văn bản tham mưu cấp ủy ban hành</h3>
+      <p id="vanbanTong"></p>
+      <div class="canvas-wrap" id="vanbanWrap" style="position:relative;flex:1;min-height:0"><canvas id="cvVanBan"></canvas></div>
+    </section>
+
+    <section class="khung" id="anh"></section>
   </main>
 
   <footer>
-    <div class="nhan-tin">TIN NỔI BẬT</div>
+    <div class="nhan-tin" id="nhanTin">TIN ĐỊA PHƯƠNG</div>
     <div class="duong-chay"><div class="bang-chu" id="bangChu"></div></div>
   </footer>
   <div id="baoLoi">Mất kết nối, đang thử lại…</div>
@@ -287,16 +338,10 @@ const CAU_HINH = {
   giayMoiMang: 15,      // thời gian hiển thị mỗi mảng
   giayMoiAnh: 8,        // thời gian mỗi ảnh
   tocDoChuChay: 110,    // pixel mỗi giây
-  phutTaiLai: 30,       // tự tải lại trang để cập nhật số liệu, ảnh, tin (ảnh đã lưu trên máy thì không tải lại)
+  phutTaiLai: 30,       // tự tải lại trang để cập nhật số liệu, ảnh, tin
   giayThuLai: 60        // mất mạng thì thử lại sau
 };
 const TIN_MAC_DINH = ["Ban Tuyên giáo Tỉnh ủy Tuyên Quang"];
-
-/* Bộ nhớ đệm ảnh trình chiếu trên máy TV.
-   Mỗi ảnh chỉ tải từ Supabase MỘT LẦN, sau đó lấy từ bộ nhớ của trình duyệt.
-   Đổi "v1" thành "v2" nếu muốn buộc máy TV tải lại toàn bộ ảnh. */
-const BO_NHO_ANH = "mhdh-anh-v1";
-const BUCKET_ANH = "anh-trinh-chieu";
 
 const MAU_MANG = { do: "#E0243F", navy: "#4F8FE0" };
 const mauCua = k => MAU_MANG[k] || MAU_MANG.do;
@@ -343,7 +388,7 @@ Chart.register({
   afterDatasetsDraw(chart) {
     if (chart.config.type !== "bar") return;
     const { ctx } = chart, ngang = chart.options.indexAxis === "y";
-    ctx.save(); ctx.font = '600 16px "Be Vietnam Pro", Arial'; ctx.fillStyle = THEME.chu;
+    ctx.save(); ctx.font = `600 ${chart.data.labels.length > 6 ? 14 : 16}px "Be Vietnam Pro", Arial`; ctx.fillStyle = THEME.chu;
     chart.data.datasets.forEach((ds, di) => {
       chart.getDatasetMeta(di).data.forEach((bar, i) => {
         const v = fmt(ds.data[i]);
@@ -402,7 +447,7 @@ function veBieuDo(canvas, cfg, mauChinh) {
       scales: {
         x: ngang ? { display: false, beginAtZero: true }
                  : { grid: { display: false }, border: { color: THEME.luoi }, ticks: { color: THEME.chuPhu, font: { size: 14 }, maxRotation: 0, autoSkip: false, padding: 6, callback(v) { return tachDong(this.getLabelForValue(v), 11); } } },
-        y: ngang ? { grid: { display: false }, border: { display: false }, ticks: { color: THEME.chu, font: { size: 16 } } }
+        y: ngang ? { grid: { display: false }, border: { display: false }, ticks: { color: THEME.chu, font: { size: so.length > 5 ? 14 : 16 }, autoSkip: false, callback(v) { const l = this.getLabelForValue(v), k = l.indexOf(" ("); if (so.length > 5) return l; return l.length > 22 && k > 0 ? [...tachDong(l.slice(0, k), 22), l.slice(k + 1)] : tachDong(l, 22); } } }
                  : { display: false, beginAtZero: true }
       }
     }
@@ -457,6 +502,8 @@ function hienMang(i) {
     ${m.bieuDo.length ? `<div class="vung-bieu-do ${m.bieuDo.length > 1 ? "hai" : ""}">
       ${m.bieuDo.map((b, k) => `<div class="bieu-do"><h3>${esc(b.tieuDe)}</h3><div class="canvas-wrap"><canvas id="cvMang${k}"></canvas></div></div>`).join("")}
     </div>` : ""}`;
+  const vung = than.querySelector(".vung-bieu-do");
+  if (vung && m.bieuDo.length > 1) vung.style.gridTemplateRows = m.bieuDo.map(b => (b.loai === "vong" ? 8 : b.loai === "barNgang" ? Math.max(6, b.nhan.length + 2) : 9) + "fr").join(" ");
   m.bieuDo.forEach((b, k) => bieuDoMang.push(veBieuDo(document.getElementById("cvMang" + k), b, mau)));
 
   tienDo.style.transition = "none"; tienDo.style.width = "0";
@@ -533,7 +580,9 @@ let henChu = null;
 function veChuChay(ds) {
   const bangChu = document.getElementById("bangChu");
   const tin = ds.length ? ds : TIN_MAC_DINH;
-  bangChu.innerHTML = tin.map(t => `<span>${esc(t)}</span>`).join('<span class="sao">◆</span>') + '<span class="sao">◆</span>';
+  bangChu.innerHTML = tin.map(t => typeof t === "string" ? `<span>${esc(t)}</span>`
+      : `<span>${esc(t.chu)}${t.nguon ? `<span class="nguon-tin">(${esc(t.nguon)})</span>` : ""}</span>`)
+    .join('<span class="sao">◆</span>') + '<span class="sao">◆</span>';
   cancelAnimationFrame(henChu);
   const rong = bangChu.parentElement.offsetWidth, dai = bangChu.offsetWidth;
   let x = rong, t0 = null;
@@ -545,68 +594,121 @@ function veChuChay(ds) {
   })(performance.now());
 }
 
-/* ===================== ẢNH TRÌNH CHIẾU: TẢI MỘT LẦN, LƯU TRÊN MÁY ===================== */
-/* Trước đây: mỗi lần trang tự tải lại (30 phút/lần) đều xin link ký mới.
-   Link ký mỗi lần một khác nên trình duyệt không dùng lại được ảnh cũ,
-   toàn bộ ảnh bị tải lại từ Supabase 48 lần/ngày. Đó là chỗ ngốn băng thông.
-   Bây giờ: ảnh được cất vào bộ nhớ đệm (Cache Storage) của trình duyệt theo tên file.
-   Ảnh đã có thì lấy luôn trên máy, chỉ ảnh mới thêm mới tải về. */
-const khoaAnh = ten => new URL("__anh-trinh-chieu__/" + encodeURIComponent(ten), location.href).href;
-let urlTamCu = [];
 
-async function layDanhSachAnh(anh) {
-  if (!anh.length) return [];
-  const blobTheoTen = new Map();
-  const coBoNho = "caches" in window;
-  let kho = null;
+/* ===================== BẢN ĐỒ DƯ LUẬN XÃ HỘI ===================== */
+const MAU_DIEM = { tich_cuc: "#34C38F", theo_doi: "#F59F3A", can_xu_ly: "#E0243F" };
+const loaiDiem = d => d.sac_thai === "tich_cuc" ? "tich_cuc" : (d.muc_do === "can_xu_ly" ? "can_xu_ly" : "theo_doi");
+const NHAN_DIEM = { tich_cuc: ["tich-cuc", "Tích cực"], theo_doi: ["theo-doi", "Theo dõi"], can_xu_ly: ["xu-ly", "Cần xử lý"] };
+let henBanDo = null;
 
-  if (coBoNho) {
-    try {
-      kho = await caches.open(BO_NHO_ANH);
-      for (const a of anh) {
-        const r = await kho.match(khoaAnh(a.duong_dan));
-        if (r) blobTheoTen.set(a.duong_dan, await r.blob());
-      }
-    } catch (e) { console.warn("Không mở được bộ nhớ đệm ảnh:", e); kho = null; }
-  }
+function chieuBanDo(w, h, le) {
+  const B = window.BAN_DO_TQ, k = Math.cos(22.45 * Math.PI / 180);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  B.vien.forEach(r => r.forEach(([lon, lat]) => { x0 = Math.min(x0, lon * k); x1 = Math.max(x1, lon * k); y0 = Math.min(y0, lat); y1 = Math.max(y1, lat); }));
+  const s = Math.min((w - 2 * le) / (x1 - x0), (h - 2 * le) / (y1 - y0));
+  const dx = (w - (x1 - x0) * s) / 2, dy = (h - (y1 - y0) * s) / 2;
+  return (lon, lat) => [dx + (lon * k - x0) * s, dy + (y1 - lat) * s];
+}
 
-  const thieu = anh.filter(a => !blobTheoTen.has(a.duong_dan));
-  if (thieu.length) {
-    try {
-      const { data: urls, error } = await sb.storage.from(BUCKET_ANH).createSignedUrls(thieu.map(a => a.duong_dan), 600);
-      if (error) throw error;
-      for (let i = 0; i < thieu.length; i++) {
-        const u = urls[i] && urls[i].signedUrl;
-        if (!u) continue;
-        try {
-          const res = await fetch(u);
-          if (!res.ok) continue;
-          const blob = await res.blob();
-          blobTheoTen.set(thieu[i].duong_dan, blob);
-          if (kho) await kho.put(khoaAnh(thieu[i].duong_dan),
-            new Response(blob, { headers: { "Content-Type": blob.type || "image/jpeg" } }));
-        } catch (e) { console.warn("Không tải được ảnh", thieu[i].duong_dan, e); }
-      }
-    } catch (e) {
-      console.warn("Không xin được link ảnh mới, dùng ảnh đã lưu trên máy:", e);
+function veBanDo(ds) {
+  const svg = document.getElementById("svgBanDo");
+  const w = svg.clientWidth || 280, h = svg.clientHeight || 420;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  if (!window.BAN_DO_TQ) { svg.innerHTML = ""; return; }
+  const p = chieuBanDo(w, h, 14), r1 = n => Math.round(n * 10) / 10;
+  const vien = BAN_DO_TQ.vien.map(r => "M" + r.map(([a, b]) => p(a, b).map(r1).join(",")).join("L") + "Z").join("");
+  const xa = BAN_DO_TQ.xa.map(x => { const [a, b] = p(x.lon, x.lat); return `<circle class="bd-xa" cx="${r1(a)}" cy="${r1(b)}" r="1.6"/>`; }).join("");
+
+  // điểm tích cực vẽ trước, tiêu cực vẽ sau để nổi lên trên
+  const daDat = [];   // khung nhãn đã đặt, để nhãn tên xã không đè lên nhau
+  const datNhan = (x, y, chu) => {
+    const rong = chu.length * 7 + 4, cao = 15;
+    const thu = [[x + 16, y - 7, "start"], [x - 16 - rong, y - 7, "end"], [x + 16, y + 9, "start"], [x - 16 - rong, y + 9, "end"], [x + 16, y - 23, "start"], [x - 16 - rong, y - 23, "end"]];
+    for (const [lx, ly, neo] of thu) {
+      const hop = [lx, ly, lx + rong, ly + cao];
+      if (lx < 0 || lx + rong > w) continue;
+      if (daDat.some(o => !(hop[2] < o[0] || hop[0] > o[2] || hop[3] < o[1] || hop[1] > o[3]))) continue;
+      daDat.push(hop);
+      return `<text class="ten" x="${neo === "start" ? lx : lx + rong}" y="${ly + 11}" text-anchor="${neo}">${esc(chu)}</text>`;
     }
-  }
+    return "";
+  };
+  ds.forEach(d => { const [x, y] = p(Number(d.lon), Number(d.lat)); daDat.push([x - 12, y - 12, x + 12, y + 12]); });
+  const thuTuVe = ds.map((d, i) => ({ d, i })).sort((a, b) => (loaiDiem(a.d) === "tich_cuc" ? 0 : 1) - (loaiDiem(b.d) === "tich_cuc" ? 0 : 1));
+  const diem = thuTuVe.map(({ d, i }) => {
+    const [x, y] = p(Number(d.lon), Number(d.lat)), loai = loaiDiem(d), mau = MAU_DIEM[loai];
+    const tenNgan = String(d.ten_xa || "").replace(/^(Xã|Phường|Thị trấn)\s+/i, "");
+    return `<g class="bd-diem">
+      ${loai === "can_xu_ly" ? `<circle class="song" cx="${r1(x)}" cy="${r1(y)}" r="11" stroke="${mau}"/>` : ""}
+      <circle class="loi" cx="${r1(x)}" cy="${r1(y)}" r="11" fill="${mau}"/>
+      <text class="so" x="${r1(x)}" y="${r1(y) + 0.5}">${i + 1}</text>
+      ${ds.length <= 10 ? datNhan(x, y, tenNgan) : ""}
+    </g>`;
+  }).join("");
+  svg.innerHTML = `<path class="bd-vien" d="${vien}"/>${xa}${diem}`;
+}
 
-  /* Dọn ảnh đã bị xóa hoặc ẩn khỏi danh sách để bộ nhớ không phình ra */
-  if (kho) {
-    try {
-      const giu = new Set(anh.map(a => khoaAnh(a.duong_dan)));
-      for (const req of await kho.keys()) if (!giu.has(req.url)) await kho.delete(req);
-    } catch (e) { console.warn(e); }
-  }
+function veDuLuan(ds) {
+  // mới nhất lên trước
+  ds = ds.slice().sort((a, b) => String(b.ngay).localeCompare(String(a.ngay)) || b.id - a.id).slice(0, 15);
+  const dem = { tich_cuc: 0, theo_doi: 0, can_xu_ly: 0 };
+  ds.forEach(d => dem[loaiDiem(d)]++);
+  document.getElementById("bdDem").innerHTML = ["tich_cuc", "theo_doi", "can_xu_ly"].map(k =>
+    `<div><b style="color:${MAU_DIEM[k]}">${dem[k]}</b><span>${NHAN_DIEM[k][1]}</span></div>`).join("");
+  veBanDo(ds);
 
-  urlTamCu.forEach(u => URL.revokeObjectURL(u));
-  urlTamCu = [];
-  return anh.filter(a => blobTheoTen.has(a.duong_dan)).map(a => {
-    const url = URL.createObjectURL(blobTheoTen.get(a.duong_dan));
-    urlTamCu.push(url);
-    return { ...a, url };
-  });
+  const ul = document.getElementById("bdDs");
+  clearInterval(henBanDo);
+  if (!ds.length) { ul.innerHTML = `<li style="display:block;color:var(--chu-phu);font-size:16px;padding-top:24px">Chưa có điểm dư luận nào đang theo dõi.</li>`; return; }
+  const moiTrang = 5, soTrang = Math.ceil(ds.length / moiTrang);
+  const ngayVN = s => { const [y, m, d] = String(s).split("-"); return d ? `${d}/${m}` : ""; };
+  let trang = 0;
+  const ve = () => {
+    ul.innerHTML = ds.slice(trang * moiTrang, trang * moiTrang + moiTrang).map((d, j) => {
+      const i = trang * moiTrang + j, loai = loaiDiem(d), [lop, nhan] = NHAN_DIEM[loai];
+      return `<li><span class="stt" style="background:${MAU_DIEM[loai]}">${i + 1}</span>
+        <div><div class="td">${esc(d.tieu_de)}</div>
+        <div class="ph">${esc(d.ten_xa)} · ${ngayVN(d.ngay)}${d.nguon ? " · " + esc(d.nguon) : ""}<span class="nhan ${lop}">${nhan}</span></div></div></li>`;
+    }).join("");
+  };
+  ve();
+  if (soTrang > 1) henBanDo = setInterval(() => { trang = (trang + 1) % soTrang; ve(); }, CAU_HINH.giayMoiMang * 1000);
+}
+
+/* ===================== TIN ĐỊA PHƯƠNG TỪ TRANG ĐIỂM TIN ===================== */
+const DT = window.CAU_HINH_DIEM_TIN || {};
+const sbTin = (DT.url && DT.anonKey && !/X{4}|DAN_KHOA/.test(DT.url + DT.anonKey))
+  ? supabase.createClient(DT.url, DT.anonKey, { auth: { persistSession: false, autoRefreshToken: false, storageKey: "mhdh-diemtin" } })
+  : null;
+
+// Báo, đài chính thống được cộng điểm khi xếp tin nổi bật
+const NGUON_CHINH = /nhân dân|vtv|vov|ttxvn|thông tấn|chính phủ|quân đội nhân dân|tuyên quang|hà giang|tạp chí cộng sản|tuyên giáo|đảng cộng sản|vietnamplus|lao động|tiền phong|thanh niên|tuổi trẻ|công an nhân dân/i;
+async function layTinDiaPhuong() {
+  if (!sbTin) return [];
+  try {
+    const tu = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data, error } = await sbTin.from("dt_bai")
+      .select("khoa, tieu_de, nguon, muc, cam_xuc, thoi_gian")
+      .contains("muc", ["diaphuong"]).eq("ngoai_tinh", false)
+      .gte("thoi_gian", tu).order("thoi_gian", { ascending: false }).limit(200);
+    if (error) throw error;
+    const bay = Date.now();
+    const daCo = new Set();
+    return data
+      .filter(t => t.cam_xuc !== "Tiêu cực")          // tin tiêu cực theo dõi trên bản đồ, không chạy chữ
+      .filter(t => { const k = String(t.tieu_de || "").trim().toLowerCase(); if (!k || daCo.has(k)) return false; daCo.add(k); return true; })
+      .map(t => {
+        const muc = t.muc || [], tuoi = (bay - new Date(t.thoi_gian)) / 3600e3;
+        const diem = (muc.includes("tieudiem") ? 3 : 0) + (muc.includes("tuyengiao") ? 1 : 0)
+          + (NGUON_CHINH.test(t.nguon || "") ? 2 : 0) + (t.cam_xuc === "Tích cực" ? 1 : 0)
+          + Math.max(0, 1 - tuoi / 24) * 2;
+        return { chu: String(t.tieu_de).trim(), nguon: t.nguon, diem };
+      })
+      .sort((a, b) => b.diem - a.diem).slice(0, 10);
+  } catch (e) {
+    console.warn("Không đọc được tin từ trang Điểm tin:", e);
+    return [];
+  }
 }
 
 /* ===================== TẢI DỮ LIỆU ===================== */
@@ -637,9 +739,21 @@ async function taiDuLieu() {
     const { data: tin, error: e3 } = await sb.from("tin_noi_bat").select("noi_dung").eq("hien", true).order("thu_tu").order("id");
     if (e3) throw e3;
 
+    // Điểm dư luận còn hạn hiển thị (chưa chạy bước 5 thì bỏ qua, không làm hỏng màn hình)
+    const homNay = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const rDL = await sb.from("mh_diem_ban_do").select("*").eq("hien", true).gte("hien_den", homNay);
+    if (rDL.error) console.warn("Chưa đọc được bảng điểm bản đồ:", rDL.error.message);
+    const dsDuLuan = rDL.error ? [] : rDL.data;
+    const tinDP = await layTinDiaPhuong();
+
     const { data: anh, error: e4 } = await sb.from("anh_trinh_chieu").select("*").eq("hien", true).order("thu_tu").order("id");
     if (e4) throw e4;
-    const dsAnh = await layDanhSachAnh(anh);
+    let dsAnh = [];
+    if (anh.length) {
+      const { data: urls, error: e5 } = await sb.storage.from("anh-trinh-chieu").createSignedUrls(anh.map(a => a.duong_dan), 12 * 3600);
+      if (e5) throw e5;
+      dsAnh = anh.map((a, i) => ({ ...a, url: urls[i] && urls[i].signedUrl })).filter(a => a.url);
+    }
 
     baoLoi(false);
     document.getElementById("kySoLieu").textContent = ky ? `Số liệu ${ky.ten}` : "Chưa có số liệu";
@@ -654,7 +768,9 @@ async function taiDuLieu() {
     }
     veAnh(dsAnh);
     await document.fonts.ready;
-    veChuChay(tin.map(t => t.noi_dung));
+    veDuLuan(dsDuLuan);
+    document.getElementById("nhanTin").textContent = tinDP.length ? "TIN ĐỊA PHƯƠNG" : "TIN NỔI BẬT";
+    veChuChay(tinDP.length ? tinDP : tin.map(t => t.noi_dung));
 
     setTimeout(() => location.reload(), CAU_HINH.phutTaiLai * 60 * 1000);
   } catch (err) {
