@@ -205,7 +205,10 @@
   .bd-dem div { flex: 1; border-radius: 10px; padding: 8px 14px; background: rgba(255,255,255,.04); }
   .bd-dem b { font-size: 26px; font-weight: 700; display: block; line-height: 1.1; }
   .bd-dem span { font-size: 13px; color: var(--chu-phu); }
-  .bd-ds { list-style: none; padding: 6px 22px 12px; overflow: hidden; display: flex; flex-direction: column; gap: 9px; }
+  .bd-ds { list-style: none; padding: 0 22px; margin: 6px 0 12px; overflow: hidden; position: relative;
+    -webkit-mask-image: linear-gradient(transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+            mask-image: linear-gradient(transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%); }
+  .bd-cuon { display: flex; flex-direction: column; gap: 11px; padding: 6px 0; will-change: transform; }
   .bd-ds li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; }
   .bd-ds .stt { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #081326; margin-top: 2px; }
   .bd-ds .td { font-size: 15.5px; font-weight: 600; color: var(--trang); line-height: 1.32;
@@ -300,7 +303,7 @@
       <div class="bd-noi-dung">
         <div class="bd-dau"><div class="vach"></div><h2>Dư luận xã hội trên địa bàn</h2></div>
         <div class="bd-dem" id="bdDem"></div>
-        <ul class="bd-ds" id="bdDs"></ul>
+        <div class="bd-ds" id="bdDs"></div>
       </div>
     </section>
 
@@ -338,6 +341,7 @@ const CAU_HINH = {
   giayMoiMang: 15,      // thời gian hiển thị mỗi mảng
   giayMoiAnh: 8,        // thời gian mỗi ảnh
   tocDoChuChay: 110,    // pixel mỗi giây
+  tocDoCuonDuLuan: 24,  // tốc độ cuộn danh sách dư luận (pixel mỗi giây)
   phutTaiLai: 30,       // tự tải lại trang để cập nhật số liệu, ảnh, tin
   giayThuLai: 60        // mất mạng thì thử lại sau
 };
@@ -599,7 +603,7 @@ function veChuChay(ds) {
 const MAU_DIEM = { tich_cuc: "#34C38F", theo_doi: "#F59F3A", can_xu_ly: "#E0243F" };
 const loaiDiem = d => d.sac_thai === "tich_cuc" ? "tich_cuc" : (d.muc_do === "can_xu_ly" ? "can_xu_ly" : "theo_doi");
 const NHAN_DIEM = { tich_cuc: ["tich-cuc", "Tích cực"], theo_doi: ["theo-doi", "Theo dõi"], can_xu_ly: ["xu-ly", "Cần xử lý"] };
-let henBanDo = null;
+let henBanDo = null;   // vòng cuộn danh sách dư luận
 
 function chieuBanDo(w, h, le) {
   const B = window.BAN_DO_TQ, k = Math.cos(22.45 * Math.PI / 180);
@@ -670,22 +674,31 @@ function veDuLuan(ds) {
     `<div><b style="color:${MAU_DIEM[k]}">${dem[k]}</b><span>${NHAN_DIEM[k][1]}</span></div>`).join("");
   veBanDo(ds);
 
-  const ul = document.getElementById("bdDs");
-  clearInterval(henBanDo);
-  if (!ds.length) { ul.innerHTML = `<li style="display:block;color:var(--chu-phu);font-size:16px;padding-top:24px">Chưa có điểm dư luận nào đang theo dõi.</li>`; return; }
-  const moiTrang = 5, soTrang = Math.ceil(ds.length / moiTrang);
+  const khung = document.getElementById("bdDs");
+  cancelAnimationFrame(henBanDo);
+  if (!ds.length) { khung.innerHTML = `<div style="color:var(--chu-phu);font-size:16px;padding-top:24px">Chưa có điểm dư luận nào đang theo dõi.</div>`; return; }
   const ngayVN = s => { const [y, m, d] = String(s).split("-"); return d ? `${d}/${m}` : ""; };
-  let trang = 0;
-  const ve = () => {
-    ul.innerHTML = ds.slice(trang * moiTrang, trang * moiTrang + moiTrang).map((d, j) => {
-      const i = trang * moiTrang + j, loai = loaiDiem(d), [lop, nhan] = NHAN_DIEM[loai];
-      return `<li><span class="stt" style="background:${MAU_DIEM[loai]}">${i + 1}</span>
-        <div><div class="td">${esc(d.tieu_de)}</div>
-        <div class="ph">${esc(d.ten_xa)} · ${ngayVN(d.ngay)}${d.nguon ? " · " + esc(d.nguon) : ""}<span class="nhan ${lop}">${nhan}</span></div></div></li>`;
-    }).join("");
-  };
-  ve();
-  if (soTrang > 1) henBanDo = setInterval(() => { trang = (trang + 1) % soTrang; ve(); }, CAU_HINH.giayMoiMang * 1000);
+  const dong = ds.map((d, i) => {
+    const loai = loaiDiem(d), [lop, nhan] = NHAN_DIEM[loai];
+    return `<div class="dong-dl" style="display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start">
+      <span class="stt" style="background:${MAU_DIEM[loai]}">${i + 1}</span>
+      <div><div class="td">${esc(d.tieu_de)}</div>
+      <div class="ph">${esc(d.ten_xa)} · ${ngayVN(d.ngay)}${d.nguon ? " · " + esc(d.nguon) : ""}<span class="nhan ${lop}">${nhan}</span></div></div></div>`;
+  }).join("");
+  khung.innerHTML = `<div class="bd-cuon">${dong}</div>`;
+  const cuon = khung.firstElementChild;
+  if (cuon.offsetHeight <= khung.clientHeight) return;      // ít tin, vừa khung thì đứng yên
+
+  // Nhiều tin: nhân đôi danh sách rồi cuộn lên từ từ, hết vòng thì nối tiếp liền mạch
+  cuon.innerHTML = dong + `<div style="height:14px"></div>` + dong;
+  const vong = cuon.children[ds.length + 1].offsetTop - cuon.children[0].offsetTop;   // chiều cao đúng một vòng
+  let y = 0, t0 = null, cho = performance.now() + 2500;   // đứng 2,5 giây cho người xem đọc tin đầu
+  (function buoc(t) {
+    if (t0 !== null && t > cho) { y += CAU_HINH.tocDoCuonDuLuan * (t - t0) / 1000; if (y >= vong) y -= vong; }
+    t0 = t;
+    cuon.style.transform = `translateY(${-y}px)`;
+    henBanDo = requestAnimationFrame(buoc);
+  })(performance.now());
 }
 
 /* ===================== TIN ĐỊA PHƯƠNG TỪ TRANG ĐIỂM TIN ===================== */
