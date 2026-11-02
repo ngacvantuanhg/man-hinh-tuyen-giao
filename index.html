@@ -14,6 +14,8 @@
 <script src="config-diem-tin.js"></script>
 <script src="chi-tieu.js"></script>
 <script src="ban-do-tq.js"></script>
+<script src="config-lien-lac.js"></script>
+<script src="lien-lac.js"></script>
 <style>
   :root {
     --do: #E0243F;
@@ -193,6 +195,10 @@
   .bd-diem circle.loi { stroke: #081326; stroke-width: 2; }
   .bd-diem text.so { font: 700 12px "Be Vietnam Pro", Arial; fill: #081326; text-anchor: middle; dominant-baseline: central; }
   .bd-diem text.ten { font: 600 12px "Be Vietnam Pro", Arial; fill: var(--trang); paint-order: stroke; stroke: #081326; stroke-width: 3px; }
+  .bam { cursor: pointer; }
+  .bd-diem.bam:hover circle.loi, g.bam:hover circle.loi { stroke: #F5E236; stroke-width: 3; }
+  .dong-dl.bam { border-radius: 8px; transition: background .15s; }
+  .dong-dl.bam:hover { background: rgba(255,255,255,.06); }
   .bd-diem .song { fill: none; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: song 2.4s ease-out infinite; }
   @keyframes song { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
   .bd-chu-giai { position: absolute; left: 14px; right: 10px; bottom: 10px; display: flex; gap: 14px; font-size: 12.5px; color: var(--chu-phu); }
@@ -604,6 +610,13 @@ const MAU_DIEM = { tich_cuc: "#34C38F", theo_doi: "#F59F3A", can_xu_ly: "#E0243F
 const loaiDiem = d => d.sac_thai === "tich_cuc" ? "tich_cuc" : (d.muc_do === "can_xu_ly" ? "can_xu_ly" : "theo_doi");
 const NHAN_DIEM = { tich_cuc: ["tich-cuc", "Tích cực"], theo_doi: ["theo-doi", "Theo dõi"], can_xu_ly: ["xu-ly", "Cần xử lý"] };
 let henBanDo = null;   // vòng cuộn danh sách dư luận
+let DS_DU_LUAN = [];   // các điểm đang hiện, theo đúng số thứ tự trên màn hình
+
+// Bấm vào điểm trên bản đồ hoặc dòng trong danh sách: mở hộp liên hệ (dùng ở máy tính bàn trực)
+["svgBanDo", "bdDs"].forEach(id => document.getElementById(id).addEventListener("click", e => {
+  const o = e.target.closest("[data-i]"); if (!o || !window.LienLac) return;
+  const d = DS_DU_LUAN[+o.dataset.i]; if (d) LienLac.mo(d, sb);
+}));
 
 function chieuBanDo(w, h, le) {
   const B = window.BAN_DO_TQ, k = Math.cos(22.45 * Math.PI / 180);
@@ -646,7 +659,7 @@ function veBanDo(ds) {
     oTinh = `<g class="bd-diem"><rect x="2" y="2" width="${rong}" height="50" rx="8" fill="rgba(8,19,38,.85)" stroke="rgba(245,226,54,.55)"/>
       <text class="ten" x="10" y="17" style="font-size:11px;fill:#F5E236;letter-spacing:.5px">TOÀN TỈNH</text>
       ${hien.map(({ d, i }, k) => { const cx = 18 + k * 26, cy = 35, l = loaiDiem(d), m = MAU_DIEM[l];
-        return `${l === "can_xu_ly" ? `<circle class="song" cx="${cx}" cy="${cy}" r="10" stroke="${m}"/>` : ""}<circle class="loi" cx="${cx}" cy="${cy}" r="10" fill="${m}"/><text class="so" x="${cx}" y="${cy + 0.5}">${i + 1}</text>`; }).join("")}</g>`;
+        return `<g data-i="${i}" class="bam">${l === "can_xu_ly" ? `<circle class="song" cx="${cx}" cy="${cy}" r="10" stroke="${m}"/>` : ""}<circle class="loi" cx="${cx}" cy="${cy}" r="10" fill="${m}"/><text class="so" x="${cx}" y="${cy + 0.5}">${i + 1}</text></g>`; }).join("")}</g>`;
     daDat.push([0, 0, rong + 4, 54]);
   }
   ds = ds.map((d, i) => ({ d, i })).filter(o => !laTinh(o.d));
@@ -655,7 +668,7 @@ function veBanDo(ds) {
   const diem = thuTuVe.map(({ d, i }) => {
     const [x, y] = p(Number(d.lon), Number(d.lat)), loai = loaiDiem(d), mau = MAU_DIEM[loai];
     const tenNgan = String(d.ten_xa || "").replace(/^(Xã|Phường|Thị trấn)\s+/i, "");
-    return `<g class="bd-diem">
+    return `<g class="bd-diem bam" data-i="${i}">
       ${loai === "can_xu_ly" ? `<circle class="song" cx="${r1(x)}" cy="${r1(y)}" r="11" stroke="${mau}"/>` : ""}
       <circle class="loi" cx="${r1(x)}" cy="${r1(y)}" r="11" fill="${mau}"/>
       <text class="so" x="${r1(x)}" y="${r1(y) + 0.5}">${i + 1}</text>
@@ -672,6 +685,7 @@ function veDuLuan(ds) {
   ds.forEach(d => dem[loaiDiem(d)]++);
   document.getElementById("bdDem").innerHTML = ["tich_cuc", "theo_doi", "can_xu_ly"].map(k =>
     `<div><b style="color:${MAU_DIEM[k]}">${dem[k]}</b><span>${NHAN_DIEM[k][1]}</span></div>`).join("");
+  DS_DU_LUAN = ds;
   veBanDo(ds);
 
   const khung = document.getElementById("bdDs");
@@ -680,7 +694,7 @@ function veDuLuan(ds) {
   const ngayVN = s => { const [y, m, d] = String(s).split("-"); return d ? `${d}/${m}` : ""; };
   const dong = ds.map((d, i) => {
     const loai = loaiDiem(d), [lop, nhan] = NHAN_DIEM[loai];
-    return `<div class="dong-dl" style="display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start">
+    return `<div class="dong-dl bam" data-i="${i}" style="display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start">
       <span class="stt" style="background:${MAU_DIEM[loai]}">${i + 1}</span>
       <div><div class="td">${esc(d.tieu_de)}</div>
       <div class="ph">${esc(d.ten_xa)} · ${ngayVN(d.ngay)}${d.nguon ? " · " + esc(d.nguon) : ""}<span class="nhan ${lop}">${nhan}</span></div></div></div>`;
@@ -694,7 +708,9 @@ function veDuLuan(ds) {
   const vong = cuon.children[ds.length + 1].offsetTop - cuon.children[0].offsetTop;   // chiều cao đúng một vòng
   let y = 0, t0 = null, cho = performance.now() + 2500;   // đứng 2,5 giây cho người xem đọc tin đầu
   (function buoc(t) {
-    if (t0 !== null && t > cho) { y += CAU_HINH.tocDoCuonDuLuan * (t - t0) / 1000; if (y >= vong) y -= vong; }
+    // dừng cuộn khi rê chuột vào danh sách hoặc đang mở hộp liên hệ, để bấm cho trúng
+    const dung = khung.matches(":hover") || (window.LienLac && LienLac.dangMo());
+    if (t0 !== null && t > cho && !dung) { y += CAU_HINH.tocDoCuonDuLuan * (t - t0) / 1000; if (y >= vong) y -= vong; }
     t0 = t;
     cuon.style.transform = `translateY(${-y}px)`;
     henBanDo = requestAnimationFrame(buoc);
@@ -815,7 +831,7 @@ async function taiDuLieu() {
     document.getElementById("nhanTin").textContent = tinDP.length ? "TIN ĐỊA PHƯƠNG" : "TIN NỔI BẬT";
     veChuChay(tinDP.length ? tinDP : tin.map(t => t.noi_dung));
 
-    setTimeout(() => location.reload(), CAU_HINH.phutTaiLai * 60 * 1000);
+    setTimeout(taiLaiKhiRanh, CAU_HINH.phutTaiLai * 60 * 1000);
     langNgheThayDoi();
   } catch (err) {
     console.error(err);
@@ -833,15 +849,20 @@ async function taiDuLieu() {
    Lắng nghe Supabase Realtime: trang quản trị lưu số liệu, ảnh, tin, điểm bản đồ
    thì màn hình tự tải lại sau vài giây, không cần bấm F5.
    Nếu kết nối tức thì không được (chưa chạy buoc6, mạng chặn) thì tự tải lại mỗi 5 phút. */
+// Đang mở hộp liên hệ thì chờ đóng hộp rồi mới tải lại, để cuộc trao đổi không bị ngắt giữa chừng
+function taiLaiKhiRanh() {
+  if (window.LienLac && LienLac.dangMo()) LienLac.khiDong(() => location.reload());
+  else location.reload();
+}
 let daLangNghe = false;
 function langNgheThayDoi() {
   if (daLangNghe) return; daLangNghe = true;
   let hen = null, duPhong = null;
   const taiLaiSau = (giay) => {
     clearTimeout(hen);
-    hen = setTimeout(() => location.reload(), giay * 1000);   // gom nhiều thay đổi liền nhau thành 1 lần tải
+    hen = setTimeout(taiLaiKhiRanh, giay * 1000);   // gom nhiều thay đổi liền nhau thành 1 lần tải
   };
-  const batDuPhong = () => { if (!duPhong) duPhong = setInterval(() => location.reload(), 5 * 60 * 1000); };
+  const batDuPhong = () => { if (!duPhong) duPhong = setInterval(taiLaiKhiRanh, 5 * 60 * 1000); };
   const kenh = sb.channel("man-hinh-theo-doi");
   ["ky_bao_cao", "chi_so", "tin_noi_bat", "anh_trinh_chieu", "mh_diem_ban_do"].forEach(bang =>
     kenh.on("postgres_changes", { event: "*", schema: "public", table: bang }, () => {

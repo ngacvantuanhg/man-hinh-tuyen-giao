@@ -14,6 +14,8 @@
 <script src="config-diem-tin.js"></script>
 <script src="chi-tieu.js"></script>
 <script src="ban-do-tq.js"></script>
+<script src="config-lien-lac.js"></script>
+<script src="lien-lac.js"></script>
 <style>
   :root {
     --do: #C8102E; --do-dam: #A50F25; --navy: #0D1B2A; --vang: #F5A623;
@@ -114,6 +116,11 @@
   .tin-dt b { font-weight: 600; font-size: 14px; }
   .tin-dt span { display: block; color: var(--chu-phu); font-size: 12.5px; }
   @media (max-width: 860px) { .bd-luoi, .luoi3 { grid-template-columns: 1fr; } .bd-nho { position: static; } }
+
+  .bang-db input { width: 100%; min-width: 120px; padding: 6px 8px; border: 1px solid var(--vien); border-radius: 6px; font: inherit; font-size: 13.5px; background: #fff; }
+  .bang-db tr.co-du-lieu td:first-child { font-weight: 600; }
+  .bang-db tr.co-du-lieu td:first-child::before { content: "● "; color: #1E8E5A; }
+  .bang-db td { padding: 5px 8px; }
   @media (max-width: 700px) { .luoi2 { grid-template-columns: 1fr; } .dong-tin { grid-template-columns: 1fr 60px; } }
 </style>
 </head>
@@ -145,6 +152,7 @@
     <button data-tab="anh">Ảnh trình chiếu</button>
     <button data-tab="tin">Tin chạy chữ</button>
     <button data-tab="banDo">Bản đồ dư luận</button>
+    <button data-tab="danhBa">Danh bạ đầu mối</button>
   </nav>
 
   <!-- SỐ LIỆU -->
@@ -275,6 +283,25 @@
       <div class="ds-tin-dt" id="dsTinDT"></div>
     </div>
   </section>
+
+  <!-- DANH BẠ ĐẦU MỐI XÃ, PHƯỜNG -->
+  <section data-trang="danhBa" class="an">
+    <div class="khoi">
+      <h2>Danh bạ đầu mối xã, phường</h2>
+      <p class="mo">Người phụ trách báo cáo của từng xã, phường. Khi bấm vào một điểm dư luận (trên màn hình theo dõi hoặc nút “Liên hệ” ở tab Bản đồ dư luận) sẽ hiện người này cùng các nút nhắn Zalo, gọi điện, mở phòng họp Google Meet. Chỉ tài khoản được cấp quyền mới xem được danh bạ.</p>
+      <div class="hang" style="margin-bottom:12px">
+        <a class="nut phu" href="DanhBa_DauMoi_XaPhuong.xlsx" download>Tải file mẫu Excel (đủ 124 xã, phường)</a>
+        <label class="nut" style="display:inline-block">Nhập từ file Excel<input type="file" id="dbFile" accept=".xlsx,.xls" class="an"></label>
+        <span id="dbDem" style="color:var(--chu-phu);font-size:14px"></span>
+      </div>
+      <div id="dbKetQua"></div>
+      <input type="search" id="dbLoc" placeholder="Tìm xã, phường hoặc tên người…" style="width:100%;padding:8px 12px;border:1px solid var(--vien);border-radius:8px;margin-bottom:10px">
+      <div class="bang-cuon" style="max-height:560px">
+        <table class="bang-db"><thead><tr><th>Xã, phường</th><th>Họ và tên</th><th>Chức vụ</th><th>Số điện thoại (Zalo)</th><th>Phòng họp riêng (nếu có)</th><th></th></tr></thead><tbody id="bangDanhBa"></tbody></table>
+      </div>
+      <p class="mo" style="margin-top:10px">Phòng họp chung của Ban: <b id="dbPhongChung"></b>. Xã nào điền “Phòng họp riêng” thì dùng phòng đó.</p>
+    </div>
+  </section>
 </main>
 
 <div id="toast"></div>
@@ -302,7 +329,7 @@ async function kiemTra() {
     return;
   }
   $("manDN").classList.add("an"); $("manChinh").classList.remove("an");
-  taiDsKy(); taiDsAnh(); taiDsTin(); taiDsDiem(); taiTinDT();
+  taiDsKy(); taiDsAnh(); taiDsTin(); taiDsDiem(); taiTinDT(); taiDanhBa();
 }
 $("formDN").addEventListener("submit", async e => {
   e.preventDefault(); $("dnLoi").classList.add("an");
@@ -423,12 +450,15 @@ async function taiDsDiem() {
       <td>${ngayVN(d.ngay)}</td>
       <td>${ngayVN(d.hien_den)}${het ? "<br><small>đã hết hạn</small>" : ""}</td>
       <td><input type="checkbox" data-bat="${d.id}" ${d.hien ? "checked" : ""} aria-label="Hiện"></td>
-      <td style="white-space:nowrap"><button class="nut phu nho" data-sua="${d.id}">Sửa</button> <button class="nut xoa nho" data-xoa="${d.id}">Xóa</button></td>
+      <td style="white-space:nowrap"><button class="nut nho" data-lienhe="${d.id}" title="Gọi Google Meet, nhắn Zalo cho đầu mối xã">Liên hệ</button> <button class="nut phu nho" data-sua="${d.id}">Sửa</button> <button class="nut xoa nho" data-xoa="${d.id}">Xóa</button></td>
     </tr>`; }).join("") : `<tr class="trong"><td colspan="7">Chưa có điểm nào.</td></tr>`;
 }
 $("bangDiem").addEventListener("click", async e => {
   const t = e.target;
-  if (t.dataset.bat) {
+  if (t.dataset.lienhe) {
+    const d = dsDiem.find(x => String(x.id) === t.dataset.lienhe);
+    if (d && window.LienLac) LienLac.mo(d, sb);
+  } else if (t.dataset.bat) {
     const { error } = await sb.from("mh_diem_ban_do").update({ hien: t.checked }).eq("id", t.dataset.bat);
     if (error) { t.checked = !t.checked; return baoLoi(error, "Đổi trạng thái"); }
     toast(t.checked ? "Đã bật hiện" : "Đã tạm ẩn"); taiDsDiem();
@@ -497,6 +527,79 @@ $("dsTinDT").addEventListener("click", e => {
   veBDNho(); $("formDiem").scrollIntoView({ behavior: "smooth", block: "center" });
 });
 datLaiForm();
+
+
+/* ===================== DANH BẠ ĐẦU MỐI ===================== */
+let danhBa = new Map();
+$("dbPhongChung").textContent = (window.CAU_HINH_LIEN_LAC || {}).phongHop || "(chưa đặt trong config-lien-lac.js)";
+const XA_SAP = XA.map(x => x.ten).sort((a, b) => a.localeCompare(b, "vi"));
+async function taiDanhBa() {
+  const { data, error } = await sb.from("mh_dau_moi_xa").select("*");
+  if (error) { $("bangDanhBa").innerHTML = `<tr><td colspan="6"><div class="tb loi">Chưa đọc được danh bạ. Anh đã chạy file buoc7_danh_ba_dau_moi.sql chưa? (${esc(error.message)})</div></td></tr>`; return; }
+  danhBa = new Map(data.map(r => [r.ten_xa, r]));
+  veDanhBa();
+}
+function veDanhBa() {
+  const loc = boDau($("dbLoc").value.trim());
+  const co = XA_SAP.filter(t => danhBa.get(t) && (danhBa.get(t).ho_ten || danhBa.get(t).dien_thoai)).length;
+  $("dbDem").textContent = `Đã có ${co}/${XA_SAP.length} xã, phường`;
+  $("bangDanhBa").innerHTML = XA_SAP.filter(t => { const r = danhBa.get(t) || {}; return !loc || boDau(t + " " + (r.ho_ten || "")).includes(loc); }).map(t => {
+    const r = danhBa.get(t) || {}, co = !!(r.ho_ten || r.dien_thoai);
+    return `<tr class="${co ? "co-du-lieu" : ""}" data-xa="${esc(t)}">
+      <td style="white-space:nowrap">${esc(t)}</td>
+      <td><input data-cot="ho_ten" value="${esc(r.ho_ten || "")}" aria-label="Họ và tên"></td>
+      <td><input data-cot="chuc_vu" value="${esc(r.chuc_vu || "")}" aria-label="Chức vụ"></td>
+      <td><input data-cot="dien_thoai" value="${esc(r.dien_thoai || "")}" inputmode="tel" aria-label="Số điện thoại"></td>
+      <td><input data-cot="phong_hop" value="${esc(r.phong_hop || "")}" placeholder="https://meet.google.com/…" aria-label="Phòng họp riêng"></td>
+      <td style="white-space:nowrap"><button class="nut nho" data-luu-db>Lưu</button>${r.id ? ` <button class="nut xoa nho" data-xoa-db>Xóa</button>` : ""}</td></tr>`;
+  }).join("");
+}
+$("dbLoc").addEventListener("input", veDanhBa);
+$("bangDanhBa").addEventListener("click", async e => {
+  const tr = e.target.closest("tr[data-xa]"); if (!tr) return;
+  const ten = tr.dataset.xa;
+  if (e.target.hasAttribute("data-luu-db")) {
+    const ban = { ten_xa: ten, cap_nhat: new Date().toISOString() };
+    tr.querySelectorAll("input[data-cot]").forEach(i => { ban[i.dataset.cot] = i.value.trim() || null; });
+    if (ban.phong_hop && !/^https?:\/\//i.test(ban.phong_hop)) { alert("Phòng họp riêng phải là đường dẫn bắt đầu bằng https://"); return; }
+    const { error } = await sb.from("mh_dau_moi_xa").upsert(ban, { onConflict: "ten_xa" });
+    if (error) return baoLoi(error, "Lưu đầu mối");
+    toast("Đã lưu đầu mối " + ten); taiDanhBa();
+  } else if (e.target.hasAttribute("data-xoa-db")) {
+    if (!confirm("Xóa đầu mối của " + ten + "?")) return;
+    const { error } = await sb.from("mh_dau_moi_xa").delete().eq("ten_xa", ten);
+    if (error) return baoLoi(error, "Xóa đầu mối");
+    toast("Đã xóa"); taiDanhBa();
+  }
+});
+$("dbFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  const kq = $("dbKetQua");
+  try {
+    const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "", raw: false });
+    const iDau = rows.findIndex(r => r.some(c => /^xã/i.test(String(c).trim()) && String(c).length < 30) && r.some(c => /điện thoại|sđt/i.test(String(c)) && String(c).length < 40));
+    if (iDau < 0) throw new Error("Không thấy dòng tiêu đề có cột “Xã, phường” và “Số điện thoại”. Hãy dùng file mẫu.");
+    const dau = rows[iDau].map(c => boDau(c));
+    const cot = k => dau.findIndex(c => k.test(c));
+    const cXa = cot(/^xa|xa, phuong/), cTen = cot(/ho (va )?ten/), cCv = cot(/chuc vu/), cDt = cot(/dien thoai|sdt/), cPh = cot(/phong hop/);
+    const ban = [], khongRo = [];
+    rows.slice(iDau + 1).forEach(r => {
+      const tenXa = String(r[cXa] || "").trim(); if (!tenXa) return;
+      const ho = cTen >= 0 ? String(r[cTen]).trim() : "", dt = cDt >= 0 ? String(r[cDt]).trim() : "";
+      if (!ho && !dt) return;
+      const x = timXa(tenXa); if (!x || x.tinh) { khongRo.push(tenXa); return; }
+      const ph = cPh >= 0 ? String(r[cPh]).trim() : "";
+      ban.push({ ten_xa: x.ten, ho_ten: ho || null, chuc_vu: cCv >= 0 ? String(r[cCv]).trim() || null : null, dien_thoai: dt || null,
+        phong_hop: /^https?:\/\//i.test(ph) ? ph : null, cap_nhat: new Date().toISOString() });
+    });
+    if (!ban.length) throw new Error("File không có dòng nào điền họ tên hoặc số điện thoại.");
+    const { error } = await sb.from("mh_dau_moi_xa").upsert(ban, { onConflict: "ten_xa" });
+    if (error) throw error;
+    kq.innerHTML = `<div class="tb ok">Đã nhập ${ban.length} xã, phường.</div>` + (khongRo.length ? `<div class="tb canh">Không nhận ra ${khongRo.length} tên (bỏ qua): ${khongRo.map(esc).join(", ")}</div>` : "");
+    taiDanhBa();
+  } catch (err) { kq.innerHTML = `<div class="tb loi">${esc(err.message || err)}</div>`; }
+});
 
 /* ===================== ĐỌC FILE EXCEL ===================== */
 const LOAI = { "tháng": "thang", "quý": "quy", "6 tháng": "6t", "9 tháng": "9t", "năm": "nam" };
